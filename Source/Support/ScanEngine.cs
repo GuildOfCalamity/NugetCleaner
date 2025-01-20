@@ -21,7 +21,7 @@ namespace NugetCleaner.Support
 
     public class ScanEngine
     {
-        public static event Action<string>? OnScanComplete = (msg) => { };
+        public static event Action<long>? OnScanComplete = (size) => { };
         public static event Action<Exception>? OnScanError = (ex) => { };
         public static event Action<TargetItem>? OnTargetAdded = (ti) => { };
 
@@ -64,7 +64,8 @@ namespace NugetCleaner.Support
                         }
                     }
                 }
-                OnScanComplete?.Invoke($"Reclaimed size if deleted: {totalSize.HumanReadableSize()}");
+                // $"Reclaimed size if deleted: {totalSize.HumanReadableSize()}"
+                OnScanComplete?.Invoke(totalSize);
             }
             catch (Exception ex)
             {
@@ -102,7 +103,8 @@ namespace NugetCleaner.Support
                         }
                     }
                 }
-                OnScanComplete?.Invoke($"Total bytes reclaimed: {totalSize.HumanReadableSize()}");
+                // $"Total bytes reclaimed: {totalSize.HumanReadableSize()}"
+                OnScanComplete?.Invoke(totalSize);
             }
             catch (Exception ex)
             {
