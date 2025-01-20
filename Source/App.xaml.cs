@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
@@ -13,6 +14,7 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Microsoft.UI.Xaml.Shapes;
 using Windows.ApplicationModel;
@@ -375,6 +377,119 @@ public partial class App : Application
     /// Returns the AssemblyVersion, not the FileVersion.
     /// </summary>
     public static Version GetCurrentAssemblyVersion() => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version();
+    #endregion
+
+    #region [Dialog Helper]
+    static SemaphoreSlim semaSlim = new SemaphoreSlim(1, 1);
+    /// <summary>
+    /// The <see cref="Microsoft.UI.Xaml.Controls.ContentDialog"/> looks much better than the
+    /// <see cref="Windows.UI.Popups.MessageDialog"/> and is part of the native Microsoft.UI.Xaml.Controls.
+    /// The <see cref="Microsoft.UI.Xaml.Controls.ContentDialog"/> does not offer a <see cref="Windows.UI.Popups.UICommandInvokedHandler"/>
+    /// callback, but in this example I've replaced that functionality with actions. Both can be shown asynchronously.
+    /// </summary>
+    /// <remarks>
+    /// There is no need to call <see cref="WinRT.Interop.InitializeWithWindow.Initialize"/> when using the <see cref="Microsoft.UI.Xaml.Controls.ContentDialog"/>,
+    /// but a <see cref="Microsoft.UI.Xaml.XamlRoot"/> must be defined since it inherits from <see cref="Microsoft.UI.Xaml.Controls.Control"/>.
+    /// The <see cref="SemaphoreSlim"/> was added to prevent "COMException: Only one ContentDialog can be opened at a time."
+    /// </remarks>
+    public static async Task ShowDialogBox(string title, string message, string primaryText, string cancelText, Action? onPrimary, Action? onCancel, Uri? imageUri)
+    {
+        if (App.MainRoot?.XamlRoot == null) { return; }
+
+        await semaSlim.WaitAsync();
+
+        #region [Initialize Assets]
+        double fontSize = 16;
+        Microsoft.UI.Xaml.Media.FontFamily fontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas");
+
+        if (App.Current.Resources.TryGetValue("FontSizeMedium", out object _))
+            fontSize = (double)App.Current.Resources["FontSizeMedium"];
+
+        if (App.Current.Resources.TryGetValue("PrimaryFont", out object _))
+            fontFamily = (Microsoft.UI.Xaml.Media.FontFamily)App.Current.Resources["PrimaryFont"];
+
+        StackPanel panel = new StackPanel()
+        {
+            Orientation = Microsoft.UI.Xaml.Controls.Orientation.Vertical,
+            Spacing = 10d
+        };
+
+        if (imageUri is not null)
+        {
+            panel.Children.Add(new Image
+            {
+                Margin = new Thickness(1, -50, 1, 1), // Move the image into the title area.
+                HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Right,
+                Stretch = Microsoft.UI.Xaml.Media.Stretch.UniformToFill,
+                Width = 40,
+                Height = 40,
+                Source = new BitmapImage(imageUri)
+            });
+        }
+
+        panel.Children.Add(new TextBlock()
+        {
+            Text = message,
+            FontSize = fontSize,
+            FontFamily = fontFamily,
+            HorizontalAlignment = Microsoft.UI.Xaml.HorizontalAlignment.Left,
+            TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap
+        });
+
+        var tb = new TextBox()
+        {
+            Text = message,
+            FontSize = fontSize,
+            FontFamily = fontFamily,
+            TextWrapping = TextWrapping.Wrap
+        };
+        tb.Loaded += (s, e) => { tb.SelectAll(); };
+        #endregion
+
+        // NOTE: Content dialogs will automatically darken the background.
+        ContentDialog contentDialog = new ContentDialog()
+        {
+            Title = title,
+            PrimaryButtonText = primaryText,
+            CloseButtonText = cancelText,
+            Content = panel,
+            XamlRoot = App.MainRoot?.XamlRoot,
+            RequestedTheme = App.MainRoot?.ActualTheme ?? ElementTheme.Default
+        };
+
+        try
+        {
+            ContentDialogResult result = await contentDialog.ShowAsync();
+
+            switch (result)
+            {
+                case ContentDialogResult.Primary:
+                    onPrimary?.Invoke();
+                    break;
+                //case ContentDialogResult.Secondary:
+                //    onSecondary?.Invoke();
+                //    break;
+                case ContentDialogResult.None: // Cancel
+                    onCancel?.Invoke();
+                    break;
+                default:
+                    Debug.WriteLine($"Dialog result not defined.");
+                    break;
+            }
+        }
+        catch (System.Runtime.InteropServices.COMException ex)
+        {
+            Debug.WriteLine($"[ERROR] ShowDialogBox(HRESULT={ex.ErrorCode}): {ex.Message}");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ERROR] ShowDialogBox: {ex.Message}");
+        }
+        finally
+        {
+            semaSlim.Release();
+        }
+    }
     #endregion
 
     /// <summary>

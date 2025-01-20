@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using Microsoft.UI;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 
 using NugetCleaner.Support;
@@ -141,12 +143,27 @@ public sealed partial class MainPage : Page
         }
     }
 
-    void RunButtonOnClick(object sender, RoutedEventArgs e)
+    async void RunButtonOnClick(object sender, RoutedEventArgs e)
     {
         #region [check current state]
         if (!_running)
         {
             _cts = new CancellationTokenSource();
+
+            if (!_reportMode)
+            {
+                await App.ShowDialogBox($"Confirmation", $"This could result is deleted files, they{Environment.NewLine}will not be moved to the recycling bin.{Environment.NewLine}{Environment.NewLine}Are you sure?", "YES", "NO",
+                    delegate 
+                    {
+                        Debug.WriteLine("[INFO] User agrees to proceed.");
+                    },
+                    delegate 
+                    {
+                        Debug.WriteLine("[INFO] User canceled the process.");
+                        _cts.Cancel();
+                    }, 
+                    new Uri($"ms-appx:///Assets/WarningIcon.png"));
+            }
             LogMessages.Clear();
             btnRun.Content = "Cancel";
             UpdateMessage("Scanning...");
@@ -196,7 +213,9 @@ public sealed partial class MainPage : Page
 
                 cbReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
 
-                if (LogMessages.Count == 0)
+                if (_cts.IsCancellationRequested)
+                    UpdateMessage($"The process was canceled!", MessageLevel.Important);
+                else if (LogMessages.Count == 0)
                     UpdateMessage($"No matches discovered. Try adjusting the days slider and try again.", MessageLevel.Important);
             });
         });

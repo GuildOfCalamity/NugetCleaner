@@ -67,6 +67,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Remove="AnimatedCirclesControl.xaml" />
+    <None Remove="Assets\WarningIcon.png" />
     <None Remove="MainPage.xaml" />
   </ItemGroup>
 
