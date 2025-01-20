@@ -1,10 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Con = System.Diagnostics.Debug;
 
 namespace NugetCleaner.Support
@@ -64,8 +60,7 @@ namespace NugetCleaner.Support
                         }
                     }
                 }
-                // $"Reclaimed size if deleted: {totalSize.HumanReadableSize()}"
-                OnScanComplete?.Invoke(totalSize);
+                OnScanComplete?.Invoke(totalSize); // $"Reclaimed size if deleted: {totalSize.HumanReadableSize()}"
             }
             catch (Exception ex)
             {
@@ -103,8 +98,7 @@ namespace NugetCleaner.Support
                         }
                     }
                 }
-                // $"Total bytes reclaimed: {totalSize.HumanReadableSize()}"
-                OnScanComplete?.Invoke(totalSize);
+                OnScanComplete?.Invoke(totalSize); // $"Total bytes reclaimed: {totalSize.HumanReadableSize()}"
             }
             catch (Exception ex)
             {
@@ -133,7 +127,7 @@ namespace NugetCleaner.Support
                     }
                     catch (Exception ex)
                     {
-                        Con.WriteLine($"Error accessing file: {file}. {ex.Message}");
+                        Con.WriteLine($"[ERROR] Accessing file: {file}. {ex.Message}");
                         OnScanError?.Invoke(ex);
                     }
                 }

@@ -40,12 +40,12 @@ namespace NugetCleaner.Support
         /// system, or enabling the user to save parts of the UI as an image source and then share that image with 
         /// other applications. 
         /// Because RenderTargetBitmap is a subclass of <see cref="Microsoft.UI.Xaml.Media.ImageSource"/>, 
-        /// it can be used as the image source for <see cref="Microsoft.UI.Xaml.Controls.Image"/> elements or an 
-        /// <see cref="Microsoft.UI.Xaml.Media.ImageBrush"/> brush. 
-        /// Calling RenderAsync() provides a useful image source but the full buffer representation of rendering 
-        /// content is not copied out of video memory until the app calls GetPixelsAsync().
-        /// It is faster to call RenderAsync() only, without calling GetPixelsAsync, and use the RenderTargetBitmap as an 
-        /// <see cref="Microsoft.UI.Xaml.Controls.Image"/> or <see cref="Microsoft.UI.Xaml.Media.ImageBrush"/> 
+        /// it can be used as the image source for <see cref="Microsoft.UI.Xaml.Controls.Image"/> elements or 
+        /// an <see cref="Microsoft.UI.Xaml.Media.ImageBrush"/> brush. 
+        /// Calling RenderAsync() provides a useful image source but the full buffer representation of 
+        /// rendering content is not copied out of video memory until the app calls GetPixelsAsync().
+        /// It is faster to call RenderAsync() only, without calling GetPixelsAsync, and use the RenderTargetBitmap as 
+        /// an <see cref="Microsoft.UI.Xaml.Controls.Image"/> or <see cref="Microsoft.UI.Xaml.Media.ImageBrush"/> 
         /// source if the app only intends to display the rendered content and does not need the pixel data. 
         /// [Stipulations]
         ///  - Content that's in the tree but with its Visibility set to Collapsed won't be captured.
