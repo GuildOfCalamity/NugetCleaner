@@ -14,6 +14,7 @@
 
 ## 🎛️ Description
 - A cleaner utility for outdated packages which can consume a large amount of space on your local storage.
+	- The `Report Only` mode will scan for and display package total sizes based on the stale amount (in days).
 
 ## 💻 Screenshot
 ![Sample](Source/Assets/Screenshot.png)
@@ -24,4 +25,4 @@
 * Copyright © 2023-2024. All rights reserved.
 
 ## 📋 Proofing
-* This application was compiled and tested using *VisualStudio* 2022 on *Windows 10* versions **22H2**, **21H2** and **21H1**.
+* This application was compiled and tested using *VisualStudio* 2022 on *Windows 10* versions **22H2**, **21H2**, **21H1** and *Windows 11* versions **24H2**, **23H2**.
