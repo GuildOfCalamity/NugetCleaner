@@ -125,18 +125,18 @@ public sealed partial class MainPage : Page
 
     void MainPageOnLoaded(object sender, RoutedEventArgs e)
     {
-        sldrDays.Value = App.Profile.Days;
+        sldrDays.Value = App.Profile!.Days;
         _loaded = true;
         PackagePath = tbNugetPath.Text = GetGlobalPackagesFolder();
         if (App.Profile.LastSize > 0)
-            UpdateMessage($"Last calculated size was {App.Profile.LastSize.HumanReadableSize()}", MessageLevel.Information);
+            UpdateMessage($"Last calculated size was {App.Profile.LastSize.HumanReadableSize()} ({App.Profile.LastCount} items)", MessageLevel.Information);
     }
 
     void SliderDaysChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_loaded)
         {
-            App.Profile.Days = (int)e.NewValue;
+            App.Profile!.Days = (int)e.NewValue;
             UpdateMessage($"Days changed to {App.Profile.Days}");
         }
     }
@@ -176,10 +176,11 @@ public sealed partial class MainPage : Page
             {
                 _running = circles.IsRunning = true;
                 btnRun.Content = "Cancel";
+                cbReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
             });
 
             if (!string.IsNullOrEmpty(PackagePath))
-                ScanEngine.Run(PackagePath, App.Profile.Days, _reportMode, _cts.Token);
+                ScanEngine.Run(PackagePath, App.Profile!.Days, _reportMode, _cts.Token);
             else
                 UpdateMessage($"{nameof(PackagePath)} cannot be empty!", MessageLevel.Error);
 
@@ -192,6 +193,8 @@ public sealed partial class MainPage : Page
                     btnRun.Content = "Scan Packages";
                 else
                     btnRun.Content = "Clean Packages";
+
+                cbReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
 
                 if (LogMessages.Count == 0)
                     UpdateMessage($"No matches discovered. Try adjusting the days slider and try again.", MessageLevel.Important);
@@ -226,7 +229,8 @@ public sealed partial class MainPage : Page
 
     void ScanEngineOnScanComplete(long size)
     {
-        App.Profile.LastSize = size;
+        App.Profile!.LastSize = size;
+        App.Profile!.LastCount = LogMessages.Count;
 
         if (_reportMode)
             UpdateMessage($"Reclaimed size if deleted: {size.HumanReadableSize()}", MessageLevel.Important);
