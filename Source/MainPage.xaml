@@ -35,7 +35,7 @@
             Grid.Row="0"
             Grid.Column="0"
             MinWidth="480"
-            Margin="20"
+            Margin="20,20,10,1"
             HorizontalAlignment="Left"
             HorizontalContentAlignment="Left"
             BorderBrush="{ThemeResource SecondaryBorderBrush}"
@@ -151,7 +151,7 @@
         <StackPanel
             Grid.Row="1"
             Grid.ColumnSpan="2"
-            Margin="25,1,5,5"
+            Margin="23,9,5,5"
             HorizontalAlignment="Stretch"
             Orientation="Horizontal">
             <TextBlock

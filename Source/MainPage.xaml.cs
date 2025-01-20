@@ -125,8 +125,11 @@ public sealed partial class MainPage : Page
 
     void MainPageOnLoaded(object sender, RoutedEventArgs e)
     {
+        sldrDays.Value = App.Profile.Days;
         _loaded = true;
         PackagePath = tbNugetPath.Text = GetGlobalPackagesFolder();
+        if (App.Profile.LastSize > 0)
+            UpdateMessage($"Last calculated size was {App.Profile.LastSize.HumanReadableSize()}", MessageLevel.Information);
     }
 
     void SliderDaysChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
@@ -221,7 +224,15 @@ public sealed partial class MainPage : Page
 
     void ScanEngineOnScanError(Exception ex) => UpdateMessage($"{ex.Message}", MessageLevel.Warning);
 
-    void ScanEngineOnScanComplete(string msg) => UpdateMessage(msg, MessageLevel.Important);
+    void ScanEngineOnScanComplete(long size)
+    {
+        App.Profile.LastSize = size;
+
+        if (_reportMode)
+            UpdateMessage($"Reclaimed size if deleted: {size.HumanReadableSize()}", MessageLevel.Important);
+        else
+            UpdateMessage($"Total bytes reclaimed: {size.HumanReadableSize()}", MessageLevel.Important);
+    }
 
     void ScanEngineOnTargetAdded(TargetItem ti) => AddLogItem(ti);
 
