@@ -79,7 +79,6 @@ public partial class App : Application
             {
                 App.IsClosing = true;
                 Debug.WriteLine($"[INFO] Application closing detected at {DateTime.Now.ToString("hh:mm:ss.fff tt")}");
-                //Profile.LastCount = this.assets.Length;
                 Process proc = Process.GetCurrentProcess();
                 Profile.Metrics = $"Process used {proc.PrivateMemorySize64 / 1024 / 1024}MB of memory and {proc.TotalProcessorTime.ToReadableString()} TotalProcessorTime on {Environment.ProcessorCount} possible cores.";
                 Profile.LastUse = DateTime.Now;
@@ -255,6 +254,40 @@ public partial class App : Application
     }
 
     /// <summary>
+    /// Gets the current state of the given window.
+    /// </summary>
+    /// <param name="window">The <see cref="Microsoft.UI.Xaml.Window"/> to check.</param>
+    /// <returns>"Maximized","Minimized","Restored","FullScreen","Unknown"</returns>
+    /// <remarks>The "Restored" state is equivalent to "Normal" in a WinForm app.</remarks>
+    public string GetWindowState(Window window)
+    {
+        if (window == null)
+            throw new ArgumentNullException(nameof(window));
+
+        var appWindow = GetAppWindow(window);
+
+        if (appWindow is null)
+            return "Unknown";
+
+        if (appWindow.Presenter is OverlappedPresenter presenter)
+        {
+            return presenter.State switch
+            {
+                OverlappedPresenterState.Maximized => "Maximized",
+                OverlappedPresenterState.Minimized => "Minimized",
+                OverlappedPresenterState.Restored => "Restored",
+                _ => "Unknown"
+            };
+        }
+
+        // If it's not an OverlappedPresenter, check for FullScreen mode.
+        if (appWindow.Presenter.Kind == AppWindowPresenterKind.FullScreen)
+            return "FullScreen";
+
+        return "Unknown";
+    }
+
+    /// <summary>
     /// Checks if the given window is maximized on its current monitor.
     /// </summary>
     /// <param name="window">The WinUI 3 window to check.</param>
@@ -282,19 +315,6 @@ public partial class App : Application
 
         return Math.Abs(windowBounds.Width - workArea.Width) < tolerance &&
                Math.Abs(windowBounds.Height - workArea.Height) < tolerance;
-    }
-
-    /// <summary>
-    /// Checks if a window is within the given region bounds.
-    /// </summary>
-    /// <param name="windowBounds">The bounds of the window.</param>
-    /// <param name="regionBounds">The bounds of the monitor region.</param>
-    /// <returns>true if the window is in the region, false otherwise</returns>
-    bool IsWindowInRegion(Rect windowBounds, RectInt32 regionBounds)
-    {
-        return windowBounds.X >= regionBounds.X && windowBounds.Y >= regionBounds.Y &&
-               windowBounds.X + windowBounds.Width <= regionBounds.X + regionBounds.Width &&
-               windowBounds.Y + windowBounds.Height <= regionBounds.Y + regionBounds.Height;
     }
     #endregion
 
