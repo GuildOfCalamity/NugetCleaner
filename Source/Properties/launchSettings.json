@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NugetCleaner (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "NugetCleaner (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}
