@@ -31,8 +31,8 @@ public partial class App : Application
 {
     #region [Properties]
     public static Window? m_window;
-    public static int m_width { get; set; } = 750;
-    public static int m_height { get; set; } = 500;
+    public static int m_width { get; set; } = 800;
+    public static int m_height { get; set; } = 550;
     public static bool IsClosing { get; set; } = false;
     public static FrameworkElement? MainRoot { get; set; }
     public static IntPtr WindowHandle { get; set; }
@@ -419,7 +419,7 @@ public partial class App : Application
         await semaSlim.WaitAsync();
 
         #region [Initialize Assets]
-        double fontSize = 16;
+        double fontSize = 14;
         Microsoft.UI.Xaml.Media.FontFamily fontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas");
 
         if (App.Current.Resources.TryGetValue("FontSizeMedium", out object _))

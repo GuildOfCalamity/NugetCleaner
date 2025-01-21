@@ -6,4 +6,5 @@
   <PropertyGroup>
     <ActiveDebugProfile>NugetCleaner (Unpackaged)</ActiveDebugProfile>
   </PropertyGroup>
+  <ItemGroup />
 </Project>

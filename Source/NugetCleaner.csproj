@@ -66,8 +66,13 @@
       <DefineConstants>IS_UNPACKAGED</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
+    <Content Remove="Assets\Fonts\Hack.ttf" />
+  </ItemGroup>
+  <ItemGroup>
     <None Remove="AnimatedCirclesControl.xaml" />
+    <None Remove="Assets\Fonts\Hack.ttf" />
     <None Remove="Assets\WarningIcon.png" />
+    <None Remove="CompositionShadow.xaml" />
     <None Remove="MainPage.xaml" />
   </ItemGroup>
 
@@ -96,6 +101,14 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.22621.3233" />
     <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.5.240607001" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Assets\Fonts\Hack.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="CompositionShadow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="AnimatedCirclesControl.xaml">

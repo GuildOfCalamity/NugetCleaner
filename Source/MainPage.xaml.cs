@@ -27,11 +27,11 @@ public sealed partial class MainPage : Page
     static bool _loaded = false;
     static bool _running = false;
     static bool _reportMode = true;
-    static Brush _lvl1 = new SolidColorBrush(Colors.Gray);
-    static Brush _lvl2 = new SolidColorBrush(Colors.DodgerBlue);
-    static Brush _lvl3 = new SolidColorBrush(Colors.Yellow);
-    static Brush _lvl4 = new SolidColorBrush(Colors.Orange);
-    static Brush _lvl5 = new SolidColorBrush(Colors.Red);
+    static Brush? _lvl1;
+    static Brush? _lvl2;
+    static Brush? _lvl3;
+    static Brush? _lvl4;
+    static Brush? _lvl5;
     static CancellationTokenSource _cts = new();
     public string? PackagePath { get; set; }
     public ObservableCollection<TargetItem> LogMessages { get; set; } = new();
@@ -46,6 +46,33 @@ public sealed partial class MainPage : Page
         ScanEngine.OnTargetAdded += ScanEngineOnTargetAdded;
         ScanEngine.OnScanComplete += ScanEngineOnScanComplete;
         ScanEngine.OnScanError += ScanEngineOnScanError;
+
+        #region [Init MessageLevel Brushes]
+        if (App.Current.Resources.TryGetValue("GradientDebugBrush", out object _))
+            _lvl1 = (Microsoft.UI.Xaml.Media.Brush)App.Current.Resources["GradientDebugBrush"];
+        else
+            _lvl1 = new SolidColorBrush(Colors.Gray);
+
+        if (App.Current.Resources.TryGetValue("GradientInfoBrush", out object _))
+            _lvl2 = (Microsoft.UI.Xaml.Media.Brush)App.Current.Resources["GradientInfoBrush"];
+        else
+            _lvl2 = new SolidColorBrush(Colors.DodgerBlue);
+
+        if (App.Current.Resources.TryGetValue("GradientImportantBrush", out object _))
+            _lvl3 = (Microsoft.UI.Xaml.Media.Brush)App.Current.Resources["GradientImportantBrush"];
+        else
+            _lvl3 = new SolidColorBrush(Colors.Yellow);
+
+        if (App.Current.Resources.TryGetValue("GradientWarningBrush", out object _))
+            _lvl4 = (Microsoft.UI.Xaml.Media.Brush)App.Current.Resources["GradientWarningBrush"];
+        else
+            _lvl4 = new SolidColorBrush(Colors.Orange);
+
+        if (App.Current.Resources.TryGetValue("GradientErrorBrush", out object _))
+            _lvl5 = (Microsoft.UI.Xaml.Media.Brush)App.Current.Resources["GradientErrorBrush"];
+        else
+            _lvl5 = new SolidColorBrush(Colors.Red);
+        #endregion
     }
 
     #region [Helpers]
@@ -61,19 +88,29 @@ public sealed partial class MainPage : Page
             {
                 case MessageLevel.Debug: tbMessages.Foreground = _lvl1; break;
                 case MessageLevel.Information: tbMessages.Foreground = _lvl2; break;
+                // Levels above information will trigger the InfoBar.
                 case MessageLevel.Important:
                     {
                         tbMessages.Foreground = _lvl3;
                         infoBar.IsOpen = true;
                         infoBar.Message = msg;
+                        infoBar.Severity = InfoBarSeverity.Informational;
                         break;
                     }
-                case MessageLevel.Warning: tbMessages.Foreground = _lvl4; break;
+                case MessageLevel.Warning:
+                    {
+                        tbMessages.Foreground = _lvl4;
+                        infoBar.IsOpen = true;
+                        infoBar.Message = msg;
+                        infoBar.Severity = InfoBarSeverity.Warning;
+                        break;
+                    }
                 case MessageLevel.Error:
                     {
                         tbMessages.Foreground = _lvl5;
                         infoBar.IsOpen = true;
                         infoBar.Message = msg;
+                        infoBar.Severity = InfoBarSeverity.Error;
                         break;
                     }
             }
@@ -94,9 +131,16 @@ public sealed partial class MainPage : Page
 
     string GetGlobalPackagesFolder()
     {
-        string text = Environment.GetEnvironmentVariable("NUGET_PACKAGES") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+        var text = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
         if (string.IsNullOrEmpty(text))
         {
+            // Try backup technique
+            text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+            if (Directory.Exists(text))
+                return text;
+
+            UpdateMessage("NUGET_PACKAGES folder was not detected on this machine.", MessageLevel.Error);
+
             return string.Empty;
         }
         else
@@ -193,7 +237,7 @@ public sealed partial class MainPage : Page
             {
                 _running = circles.IsRunning = true;
                 btnRun.Content = "Cancel";
-                cbReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
+                tsReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
             });
 
             if (!string.IsNullOrEmpty(PackagePath))
@@ -211,10 +255,10 @@ public sealed partial class MainPage : Page
                 else
                     btnRun.Content = "Clean Packages";
 
-                cbReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
+                tsReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
 
                 if (_cts.IsCancellationRequested)
-                    UpdateMessage($"The process was canceled!", MessageLevel.Important);
+                    UpdateMessage($"The process was canceled!", MessageLevel.Warning);
                 else if (LogMessages.Count == 0)
                     UpdateMessage($"No matches discovered. Try adjusting the days slider and try again.", MessageLevel.Important);
             });
@@ -226,11 +270,30 @@ public sealed partial class MainPage : Page
 
     void ButtonRunOnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) => this.ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Hand);
 
+
+    void ReportOnSwitchToggled(object sender, RoutedEventArgs e)
+    {
+        var ts = sender as ToggleSwitch;
+        if (ts != null && _loaded && ts.IsOn)
+        {
+            btnRun.Content = "Scan Packages";
+            gbHeader.Text = "Scanning Options";
+            _reportMode = true;
+        }
+        else if (ts != null && _loaded && !ts.IsOn)
+        {
+            btnRun.Content = "Clean Packages";
+            gbHeader.Text = "Cleaning Options";
+            _reportMode = false;
+        }
+    }
+
     void ReportOnChecked(object sender, RoutedEventArgs e)
     {
         if (_loaded && !_running)
         {
             btnRun.Content = "Scan Packages";
+            gbHeader.Text = "Scanning Options";
             _reportMode = true;
         }
     }
@@ -240,6 +303,7 @@ public sealed partial class MainPage : Page
         if (_loaded && !_running)
         { 
             btnRun.Content = "Clean Packages";
+            gbHeader.Text = "Cleaning Options";
             _reportMode = false;
         }
     }
@@ -260,4 +324,5 @@ public sealed partial class MainPage : Page
     void ScanEngineOnTargetAdded(TargetItem ti) => AddLogItem(ti);
 
     #endregion
+
 }

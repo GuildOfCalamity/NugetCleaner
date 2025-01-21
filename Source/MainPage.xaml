@@ -28,27 +28,37 @@
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             Opacity="0.08"
-            Source="/Assets/AppIcon.png" />
+            Source="ms-appx:///Assets/AppIcon.png"
+            Stretch="Uniform" />
 
         <!--#region [Settings]-->
         <local:GroupBox
             Grid.Row="0"
             Grid.Column="0"
-            MinWidth="480"
+            MinWidth="500"
             Margin="20,20,10,1"
             HorizontalAlignment="Left"
             HorizontalContentAlignment="Left"
             BorderBrush="{ThemeResource SecondaryBorderBrush}"
+            FontFamily="{StaticResource PrimaryFont}"
             FontSize="{StaticResource FontSizeMedium}">
             <local:GroupBox.Heading>
                 <StackPanel Orientation="Horizontal">
+                    <!--  https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.symbol?view=windows-app-sdk-1.5#fields  -->
                     <SymbolIcon
                         Margin="0,0,5,0"
                         VerticalAlignment="Bottom"
                         Foreground="{ThemeResource SecondaryBorderBrush}"
                         Symbol="Setting" />
-                    <!--  https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.ui.xaml.controls.symbol?view=windows-app-sdk-1.5#fields  -->
-                    <TextBlock Text="Scanning Options" />
+                    <local:CompositionShadow
+                        VerticalAlignment="Bottom"
+                        BlurRadius="2.0"
+                        OffsetX="0.0"
+                        OffsetY="2.0"
+                        ShadowOpacity="0.9"
+                        Color="{ThemeResource SystemAccentColorLight2}">
+                        <TextBlock x:Name="gbHeader" Text="Scanning Options" />
+                    </local:CompositionShadow>
                 </StackPanel>
             </local:GroupBox.Heading>
 
@@ -63,21 +73,25 @@
                         <RowDefinition Height="*" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <CheckBox
-                        x:Name="cbReport"
-                        Grid.Row="0"
-                        Margin="10,3,2,2"
-                        HorizontalAlignment="Left"
-                        Checked="ReportOnChecked"
-                        Content="Report Only (no deletions)"
-                        IsChecked="True"
-                        Unchecked="ReportOnUnchecked" />
+                    <StackPanel Grid.Row="0" Orientation="Horizontal">
+                        <ToggleSwitch
+                            x:Name="tsReport"
+                            Margin="5,3,2,2"
+                            FontFamily="{StaticResource PrimaryFont}"
+                            Header=""
+                            IsOn="True"
+                            OffContent="Removal (deletions)"
+                            OnContent="Report Only (no deletions)"
+                            Style="{StaticResource GlowSwitch}"
+                            Toggled="ReportOnSwitchToggled" />
+                    </StackPanel>
                     <StackPanel Grid.Row="1" Orientation="Horizontal">
                         <TextBlock
                             Margin="2,4,2,2"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center"
-                            FontSize="13"
+                            FontFamily="{StaticResource PrimaryFont}"
+                            FontSize="{StaticResource FontSizeNormal}"
                             Foreground="Gray"
                             Text="Days:" />
                         <Slider
@@ -85,24 +99,37 @@
                             MinWidth="120"
                             Margin="10,6,10,2"
                             HorizontalAlignment="Left"
+                            FontFamily="{StaticResource PrimaryFont}"
                             Maximum="365"
                             Minimum="1"
+                            Style="{StaticResource GlowSlider}"
                             ValueChanged="SliderDaysChanged"
                             Value="180" />
+                        <TextBlock
+                            Margin="2,4,2,2"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            FontFamily="{StaticResource PrimaryFont}"
+                            FontSize="{StaticResource FontSizeNormal}"
+                            Foreground="Gray"
+                            Text="{x:Bind (x:Double)sldrDays.Value, Mode=OneWay, Converter={StaticResource ValueToDays}}" />
                     </StackPanel>
                     <StackPanel Grid.Row="2" Orientation="Horizontal">
                         <TextBlock
                             Margin="2,1,2,2"
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center"
-                            FontSize="13"
+                            FontFamily="{StaticResource PrimaryFont}"
+                            FontSize="{StaticResource FontSizeNormal}"
                             Foreground="Gray"
                             Text="Path:" />
                         <TextBox
                             x:Name="tbNugetPath"
-                            MinWidth="300"
+                            MinWidth="350"
                             Margin="10,2,10,2"
-                            HorizontalAlignment="Left" />
+                            HorizontalAlignment="Left"
+                            FontFamily="{StaticResource PrimaryFont}"
+                            Style="{StaticResource GlowTextBox}" />
                     </StackPanel>
                 </Grid>
             </Grid>
@@ -110,6 +137,7 @@
         </local:GroupBox>
         <!--#endregion-->
 
+        <!--#region [Commands]-->
         <StackPanel
             Grid.Row="0"
             Grid.Column="1"
@@ -118,16 +146,17 @@
             Orientation="Vertical">
             <Button
                 x:Name="btnRun"
-                MinWidth="180"
+                MinWidth="190"
                 MinHeight="60"
                 Margin="20"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
                 Click="RunButtonOnClick"
                 Content="Scan Packages"
+                FontFamily="{StaticResource PrimaryFont}"
                 FontSize="{StaticResource FontSizeLarge}"
                 Style="{StaticResource EnhancedButton}" />
-            <!--#region [Animation]-->
+            <!--  Animation  -->
             <Grid
                 x:Name="animGrid"
                 Width="200"
@@ -145,9 +174,10 @@
                     ScaleFactor="1.4"
                     UseRadialGradient="False" />
             </Grid>
-            <!--#endregion-->
         </StackPanel>
+        <!--#endregion-->
 
+        <!--#region [Status Line]-->
         <StackPanel
             Grid.Row="1"
             Grid.ColumnSpan="2"
@@ -157,10 +187,12 @@
             <TextBlock
                 x:Name="tbMessages"
                 VerticalAlignment="Center"
+                FontFamily="{StaticResource PrimaryFont}"
                 FontSize="{StaticResource FontSizeMedium}"
-                Foreground="Gray"
+                Foreground="{StaticResource GradientInfoBrush}"
                 Text="" />
         </StackPanel>
+        <!--#endregion-->
 
         <!--#region [Message List]-->
         <Grid
@@ -172,8 +204,8 @@
             RowDefinitions="Auto,*">
             <!--  Log Viewer Resources  -->
             <Grid.Resources>
-                <GridLength x:Key="TimestampColumnWidth">170</GridLength>
-                <GridLength x:Key="LevelColumnWidth">80</GridLength>
+                <GridLength x:Key="DateColumnWidth">158</GridLength>
+                <GridLength x:Key="SizeColumnWidth">82</GridLength>
                 <!--  Styles  -->
                 <Style x:Key="ColumnHeaderBorderStyle" TargetType="Border">
                     <Setter Property="Background" Value="Transparent" />
@@ -202,11 +234,12 @@
                     <Style BasedOn="{StaticResource ColumnHeaderTextBlockStyle}" TargetType="TextBlock" />
                 </Grid.Resources>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="{StaticResource TimestampColumnWidth}" />
-                    <ColumnDefinition Width="{StaticResource LevelColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource DateColumnWidth}" />
+                    <ColumnDefinition Width="{StaticResource SizeColumnWidth}" />
+                    <!--  Message data column will consume the rest  -->
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <!--  Number Column Header  -->
+                <!--  Column Names  -->
                 <Border Grid.Column="0">
                     <TextBlock Foreground="{ThemeResource HeaderBrush}" Text="Date" />
                 </Border>
@@ -232,23 +265,26 @@
                                     <Style BasedOn="{StaticResource LogElementTextBlockStyle}" TargetType="TextBlock" />
                                 </Grid.Resources>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="{StaticResource TimestampColumnWidth}" />
-                                    <ColumnDefinition Width="{StaticResource LevelColumnWidth}" />
+                                    <ColumnDefinition Width="{StaticResource DateColumnWidth}" />
+                                    <ColumnDefinition Width="{StaticResource SizeColumnWidth}" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <!--  Time Element  -->
+                                <!--  Date Element  -->
                                 <TextBlock
                                     Grid.Column="0"
+                                    FontFamily="{StaticResource PrimaryFont}"
                                     Foreground="{ThemeResource PrimaryBrush}"
-                                    Text="{x:Bind LastAccess, Converter={StaticResource StringToFormat}, ConverterParameter='{}{0:hh:mm:ss.fff tt (ddd)}'}" />
+                                    Text="{x:Bind LastAccess, Converter={StaticResource StringToFormat}, ConverterParameter='{}{0:ddd, dd MMM yyyy}'}" />
                                 <!--  Size Element  -->
                                 <TextBlock
                                     Grid.Column="1"
+                                    FontFamily="{StaticResource PrimaryFont}"
                                     Foreground="{ThemeResource PrimaryBrush}"
                                     Text="{x:Bind Size, Converter={StaticResource BytesToFileSize}}" />
                                 <!--  Location Element  -->
                                 <TextBlock
                                     Grid.Column="2"
+                                    FontFamily="{StaticResource PrimaryFont}"
                                     Foreground="{ThemeResource PrimaryBrush}"
                                     Text="{x:Bind Location, Converter={StaticResource TruncateText}, ConverterParameter='100'}" />
                             </Grid>
@@ -271,6 +307,8 @@
                 AnimationSeconds="2.0"
                 AutoCloseInterval="6000"
                 Background="{StaticResource GradientBarBrush}"
+                FontFamily="{StaticResource PrimaryFont}"
+                Foreground="{StaticResource PrimaryBrush}"
                 Severity="Informational"
                 SlideUp="True" />
         </StackPanel>

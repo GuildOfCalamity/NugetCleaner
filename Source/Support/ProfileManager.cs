@@ -6,9 +6,11 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+
 using Windows.Security.Cryptography;
 using Windows.Security.Cryptography.DataProtection;
 using Windows.Storage.Streams;
+
 using Con = System.Diagnostics.Debug;
 
 namespace NugetCleaner;
@@ -62,7 +64,7 @@ public class AppSettings
     /// <param name="portableEncryption">
     /// <para>If true, the profile will use a standard <see cref="System.Security.Cryptography.Aes"/>-128 encryption process for identified properties, and the
     /// settings will work if transfered to another machine.</para>
-    /// <para>If false, the profile will use <see cref="System.Security.Cryptography.ProtectedData"/> for encryption, 
+    /// <para>If false, the profile will use <see cref="Windows.Security.Cryptography.DataProtection.DataProtectionProvider"/> for encryption, 
     /// but this will only be compatible machine-wide and is incompatible once copied to another machine.</para>
     /// </param>
     /// <returns><see cref="AppSettings"/> object</returns>
@@ -180,20 +182,25 @@ public class AppSettings
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !portable)
             {
-                var plainBytes = Encoding.UTF8.GetBytes(plainText);
-                var encryptedBytes = EncryptSync(Encoding.UTF8.GetString(plainBytes));
-                return encryptedBytes;
+                return EncryptSync(plainText);
             }
             else
             {
                 return EncryptPortable(plainText, $"{p1}{p3}{p2}");
             }
         }
+        catch (COMException ex)
+        {
+            if (ex.HResult == -2146893819)
+                Con.WriteLine($"[ERROR] Encrypting data: NTE_BAD_DATA");
+            else
+                Con.WriteLine($"[ERROR] Encrypting data(HRESULT={ex.HResult}): {ex.Message}");
+        }
         catch (Exception ex)
         {
             Con.WriteLine($"[ERROR] Encrypting data: {ex.Message}");
-            return string.Empty;
         }
+        return string.Empty;
     }
 
     /// <summary>
@@ -210,20 +217,25 @@ public class AppSettings
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) && !portable)
             {
-                var encryptedBytes = Convert.FromBase64String(encryptedText);
-                var plainBytes = DecryptSync(Encoding.UTF8.GetString(encryptedBytes));
-                return plainBytes;
+                return DecryptSync(encryptedText);
             }
             else
             {
                 return DecryptPortable(encryptedText, $"{p1}{p3}{p2}");
             }
         }
+        catch (COMException ex)
+        {
+            if (ex.HResult == -2146893819)
+                Con.WriteLine($"[ERROR] Decrypting data: NTE_BAD_DATA");
+            else
+                Con.WriteLine($"[ERROR] Decrypting data(HRESULT={ex.HResult}): {ex.Message}");
+        }
         catch (Exception ex)
         {
             Con.WriteLine($"[ERROR] Decrypting data: {ex.Message}");
-            return string.Empty;
         }
+        return string.Empty;
     }
 
     /// <summary>
@@ -239,7 +251,7 @@ public class AppSettings
         try
         {
             var plainBuffer = CryptographicBuffer.ConvertStringToBinary(plainText, BinaryStringEncoding.Utf8);
-            var provider = new DataProtectionProvider(Encoding.UTF8.GetString(entropyBytes));
+            var provider = new DataProtectionProvider("LOCAL=machine"); // "LOCAL=machine", "LOCAL=user", "LOCAL=app", "LOCAL=group", "CURRENT=user", or a valid SID
             IBuffer encryptedBuffer = await provider.ProtectAsync(plainBuffer);
             return CryptographicBuffer.EncodeToBase64String(encryptedBuffer);
         }
@@ -263,15 +275,19 @@ public class AppSettings
         try
         {
             var plainBuffer = CryptographicBuffer.ConvertStringToBinary(plainText, BinaryStringEncoding.Utf8);
-            var provider = new DataProtectionProvider(Encoding.UTF8.GetString(entropyBytes));
+            var provider = new DataProtectionProvider("LOCAL=machine"); // "LOCAL=machine", "LOCAL=user", "LOCAL=app", "LOCAL=group", "CURRENT=user", or a valid SID
             IBuffer encryptedBuffer = provider.ProtectAsync(plainBuffer).AsTask().Result;
             return CryptographicBuffer.EncodeToBase64String(encryptedBuffer);
         }
         catch (AggregateException ex) when (ex.InnerException != null)
         {
             Con.WriteLine($"[ERROR] Encrypting data: {ex.InnerException.Message}");
-            return plainText;
         }
+        catch (Exception ex)
+        {
+            Con.WriteLine($"[ERROR] Encrypting data: {ex.Message}");
+        }
+        return plainText;
     }
 
     /// <summary>
@@ -287,7 +303,7 @@ public class AppSettings
         try
         {
             var encryptedBuffer = CryptographicBuffer.DecodeFromBase64String(encryptedData);
-            var provider = new DataProtectionProvider();
+            var provider = new DataProtectionProvider("LOCAL=machine"); // "LOCAL=machine", "LOCAL=user", "LOCAL=app", "LOCAL=group", "CURRENT=user", or a valid SID
             IBuffer decryptedBuffer = await provider.UnprotectAsync(encryptedBuffer);
             return CryptographicBuffer.ConvertBinaryToString(BinaryStringEncoding.Utf8, decryptedBuffer);
         }
@@ -311,15 +327,19 @@ public class AppSettings
         try
         {
             var encryptedBuffer = CryptographicBuffer.DecodeFromBase64String(encryptedData);
-            var provider = new DataProtectionProvider();
+            var provider = new DataProtectionProvider("LOCAL=machine"); // "LOCAL=machine", "LOCAL=user", "LOCAL=app", "LOCAL=group", "CURRENT=user", or a valid SID
             IBuffer decryptedBuffer = provider.UnprotectAsync(encryptedBuffer).AsTask().Result;
             return CryptographicBuffer.ConvertBinaryToString(BinaryStringEncoding.Utf8, decryptedBuffer);
         }
         catch (AggregateException ex) when (ex.InnerException != null)
         {
             Con.WriteLine($"[ERROR] Decrypting data: {ex.InnerException.Message}");
-            return string.Empty;
         }
+        catch (Exception ex)
+        {
+            Con.WriteLine($"[ERROR] Decrypting data: {ex.Message}");
+        }
+        return string.Empty;
     }
 
     /// <summary>
@@ -404,7 +424,7 @@ public class AppSettings
             if (!portable)
             {
                 var encryptedBuffer = CryptographicBuffer.DecodeFromBase64String(value);
-                var provider = new DataProtectionProvider();
+                var provider = new DataProtectionProvider("LOCAL=machine"); // "LOCAL=machine", "LOCAL=user", "LOCAL=app", "LOCAL=group", "CURRENT=user", or a valid SID
                 IBuffer decryptedBuffer = provider.UnprotectAsync(encryptedBuffer).AsTask().Result;
                 return true;
             }
@@ -413,10 +433,15 @@ public class AppSettings
                 return IsAesEncrypted(value);
             }
         }
+        catch (COMException ex)
+        {
+            if (ex.HResult == -2146893819)
+                Con.WriteLine($"[WARNING] IsEncrypted: NTE_BAD_DATA");
+        }
         catch (Exception)
         {
-            return false;
         }
+        return false;
     }
 
     /// <summary>
@@ -435,6 +460,10 @@ public class AppSettings
         catch (FormatException)
         {
             return false; // Invalid Base64 string
+        }
+        catch (Exception)
+        {
+            return false; // Other issue
         }
 
         // Check if the length is a multiple of 16 (AES block size)
