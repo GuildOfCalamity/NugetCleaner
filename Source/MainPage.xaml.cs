@@ -9,18 +9,12 @@ using Microsoft.UI;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Media;
 
 using NugetCleaner.Support;
 
 namespace NugetCleaner;
 
-/// <summary>
-/// NOTE: Be sure last access timestamps are enabled on your system by running 
-/// "fsutil behavior query disablelastaccess" using an admin command prompt.
-/// The results should report "DisableLastAccess = 2  (System Managed, Disabled)".
-/// </summary>
 public sealed partial class MainPage : Page
 {
     #region [Properties]
@@ -47,7 +41,7 @@ public sealed partial class MainPage : Page
         ScanEngine.OnScanComplete += ScanEngineOnScanComplete;
         ScanEngine.OnScanError += ScanEngineOnScanError;
 
-        #region [Init MessageLevel Brushes]
+        #region [MessageLevel Brushes]
         if (App.Current.Resources.TryGetValue("GradientDebugBrush", out object _))
             _lvl1 = (Microsoft.UI.Xaml.Media.Brush)App.Current.Resources["GradientDebugBrush"];
         else
@@ -169,46 +163,64 @@ public sealed partial class MainPage : Page
 
     #region [Events]
 
-    void MainPageOnLoaded(object sender, RoutedEventArgs e)
+    async void MainPageOnLoaded(object sender, RoutedEventArgs e)
     {
         sldrDays.Value = App.Profile!.Days;
         _loaded = true;
         PackagePath = tbNugetPath.Text = GetGlobalPackagesFolder();
+
+        #region [User Messages]
         if (App.Profile.LastSize > 0)
             UpdateMessage($"Last calculated size was {App.Profile.LastSize.HumanReadableSize()} ({App.Profile.LastCount} items)", MessageLevel.Information);
-    }
 
-    void SliderDaysChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
-    {
-        if (_loaded)
+        if (App.Profile.FirstRun && this.Content is not null)
         {
-            App.Profile!.Days = (int)e.NewValue;
-            UpdateMessage($"Days changed to {App.Profile.Days}");
+            App.Profile.FirstRun = false;
+            ContentDialogResult result = await Support.DialogHelper.ShowAsync(new Dialogs.AboutDialog(), Content as FrameworkElement);
+            if (result is ContentDialogResult.Primary)
+            {
+                Debug.WriteLine("[INFO] User clicked 'OK'.");
+            }
+            else if (result is ContentDialogResult.None)
+            {
+                Debug.WriteLine("[INFO] User clicked 'Cancel'.");
+            }
         }
+        #endregion
     }
 
     async void RunButtonOnClick(object sender, RoutedEventArgs e)
     {
-        #region [check current state]
+        #region [Check current state]
         if (!_running)
         {
             _cts = new CancellationTokenSource();
 
             if (!_reportMode)
             {
-                await App.ShowDialogBox($"Confirmation", $"This could result is deleted files, they{Environment.NewLine}will not be moved to the recycling bin.{Environment.NewLine}{Environment.NewLine}Are you sure?", "YES", "NO",
-                    delegate 
+                //await App.ShowDialogBox($"Confirmation", $"This could result is deleted files, they{Environment.NewLine}will not be moved to the recycling bin.{Environment.NewLine}{Environment.NewLine}Are you sure?", "YES", "NO",
+                //    delegate { Debug.WriteLine("[INFO] User agrees to proceed."); },
+                //    delegate { Debug.WriteLine("[INFO] User canceled the process."); _cts.Cancel(); }, 
+                //    new Uri($"ms-appx:///Assets/WarningIcon.png"));
+                if (this.Content is not null && !App.IsClosing)
+                {
+                    ContentDialogResult result = await Support.DialogHelper.ShowAsync(new Dialogs.CleanupDialog(), Content as FrameworkElement);
+                    if (result is ContentDialogResult.Primary)
                     {
                         Debug.WriteLine("[INFO] User agrees to proceed.");
-                    },
-                    delegate 
+                        LogMessages.Clear();
+                    }
+                    else if (result is ContentDialogResult.None)
                     {
                         Debug.WriteLine("[INFO] User canceled the process.");
                         _cts.Cancel();
-                    }, 
-                    new Uri($"ms-appx:///Assets/WarningIcon.png"));
+                    }
+                }
             }
-            LogMessages.Clear();
+            else
+            {
+                LogMessages.Clear();
+            }
             btnRun.Content = "Cancel";
             UpdateMessage("Scanning...");
         }
@@ -230,11 +242,12 @@ public sealed partial class MainPage : Page
         }
         #endregion
 
-        #region [offload scan in new thread]
-        Task.Run(async delegate()
+        #region [Offload scan in new thread]
+        Task.Run(delegate()
         {
             DispatcherQueue?.TryEnqueue(() =>
             {
+                TaskbarProgress.SetState(App.WindowHandle, TaskbarProgress.TaskbarStates.Indeterminate);
                 _running = circles.IsRunning = true;
                 btnRun.Content = "Cancel";
                 tsReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
@@ -247,29 +260,41 @@ public sealed partial class MainPage : Page
 
         }).GetAwaiter().OnCompleted(() =>
         {
-            _running = circles.IsRunning = false;
+            _running = false;
             DispatcherQueue?.TryEnqueue(() =>
             {
+                TaskbarProgress.SetState(App.WindowHandle, TaskbarProgress.TaskbarStates.NoProgress);
+                circles.IsRunning = _running;
+                tsReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
+                
                 if (_reportMode)
                     btnRun.Content = "Scan Packages";
                 else
                     btnRun.Content = "Clean Packages";
 
-                tsReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
-
                 if (_cts.IsCancellationRequested)
                     UpdateMessage($"The process was canceled!", MessageLevel.Warning);
                 else if (LogMessages.Count == 0)
                     UpdateMessage($"No matches discovered. Try adjusting the days slider and try again.", MessageLevel.Important);
+                else if (LogMessages.Count > 1)
+                    ToastHelper.ShowStandardToast("Results", $"There are {LogMessages.Count.ToString("#,###,##0")} stale NuGet packages than can be removed.");
             });
         });
         #endregion
     }
 
+    void SliderDaysChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
+    {
+        if (_loaded)
+        {
+            App.Profile!.Days = (int)e.NewValue;
+            UpdateMessage($"Days changed to {App.Profile.Days}");
+        }
+    }
+
     void ButtonRunOnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) => this.ProtectedCursor = null;
 
     void ButtonRunOnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) => this.ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Hand);
-
 
     void ReportOnSwitchToggled(object sender, RoutedEventArgs e)
     {
@@ -282,26 +307,6 @@ public sealed partial class MainPage : Page
         }
         else if (ts != null && _loaded && !ts.IsOn)
         {
-            btnRun.Content = "Clean Packages";
-            gbHeader.Text = "Cleaning Options";
-            _reportMode = false;
-        }
-    }
-
-    void ReportOnChecked(object sender, RoutedEventArgs e)
-    {
-        if (_loaded && !_running)
-        {
-            btnRun.Content = "Scan Packages";
-            gbHeader.Text = "Scanning Options";
-            _reportMode = true;
-        }
-    }
-
-    void ReportOnUnchecked(object sender, RoutedEventArgs e)
-    {
-        if (_loaded && !_running)
-        { 
             btnRun.Content = "Clean Packages";
             gbHeader.Text = "Cleaning Options";
             _reportMode = false;
@@ -324,5 +329,4 @@ public sealed partial class MainPage : Page
     void ScanEngineOnTargetAdded(TargetItem ti) => AddLogItem(ti);
 
     #endregion
-
 }

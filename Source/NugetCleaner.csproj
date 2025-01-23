@@ -12,8 +12,9 @@
     <UseWinUI>true</UseWinUI>
     <EnableMsixTooling>true</EnableMsixTooling>
     <Nullable>enable</Nullable>
-	<ApplicationIcon>Assets/AppIcon.ico</ApplicationIcon>
-	<!-- 
+    <ApplicationIcon>Assets/AppIcon.ico</ApplicationIcon>
+    <TieredCompilationQuickJitForLoops>true</TieredCompilationQuickJitForLoops>
+    <!-- 
         [for SDK v1.5 specifically]
         https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/stable-channel#other-new-features-from-across-the-winappsdk
         <PublishSingleFile>true</PublishSingleFile>
@@ -21,42 +22,38 @@
         https://learn.microsoft.com/en-us/windows/apps/windows-app-sdk/stable-channel#known-issues
         <ShouldComputeInputPris>true</ShouldComputeInputPris>
     -->
-      <LangVersion>latest</LangVersion>
-      <EnableMsixTooling>true</EnableMsixTooling>
-      <Version>1.0.0.0</Version>
-      <FileVersion>1.0.0.0</FileVersion>
-      <AssemblyVersion>1.0.0.0</AssemblyVersion>
-      <PackageId>IconExtractor2024</PackageId>
-      <Title>IconExtractor</Title>
-      <Authors>The Guild</Authors>
+    <LangVersion>latest</LangVersion>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <Version>1.0.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <PackageId>NugetCleaner2025</PackageId>
+    <Title>Nuget Cleaner</Title>
+    <Authors>The Guild</Authors>
     <!-- 
       WindowsPackageType defines whether your app is packaged (MSIX) or unpackaged (None) 
     -->
-      <WindowsPackageType>None</WindowsPackageType>
-      <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <!-- 
       Get rid of all the unnecessary pathing that MS adds and 
       makes the output match the traditional .NET Framework builds.
     -->
-      <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-      <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-      <!-- 
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <!-- 
          https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#generatedocumentationfile
     -->
-      <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> -->
-      <!-- 
+    <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> -->
+    <!-- 
          https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#optimizeimplicitlytriggeredbuild 
     -->
-      <OptimizeImplicitlyTriggeredBuild>true</OptimizeImplicitlyTriggeredBuild>
+    <OptimizeImplicitlyTriggeredBuild>true</OptimizeImplicitlyTriggeredBuild>
     <!-- 
-         If true, this will create a subfolder named "refs" which contains all of the possible framework dependencies. The default value is false.
-         https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#preservecompilationcontext
+      If true, this will create a subfolder named "refs" which contains all of the possible framework dependencies. The default value is false.
+      https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#preservecompilationcontext
     -->
-      <PreserveCompilationContext>false</PreserveCompilationContext>
-    <!-- 
-      This only seems to work with ASP.NET projects — I'm leaving it for posterity.
-    -->
-      <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <PreserveCompilationContext>false</PreserveCompilationContext>
   </PropertyGroup>
   
   <!-- 
@@ -73,6 +70,7 @@
     <None Remove="Assets\Fonts\Hack.ttf" />
     <None Remove="Assets\WarningIcon.png" />
     <None Remove="CompositionShadow.xaml" />
+    <None Remove="Dialogs\CloseAppDialog.xaml" />
     <None Remove="MainPage.xaml" />
   </ItemGroup>
 
@@ -114,9 +112,20 @@
     <Page Update="AnimatedCirclesControl.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Update="Dialogs\AboutDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Dialogs\CleanupDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
   </ItemGroup>
   <ItemGroup>
     <Page Update="MainPage.xaml">
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <Page Update="Dialogs\CloseAppDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>

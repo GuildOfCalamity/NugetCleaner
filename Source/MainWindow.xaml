@@ -17,6 +17,53 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
+        <Grid.Resources>
+            <MenuFlyout
+                x:Name="TitlebarMenuFlyout"
+                x:FieldModifier="public"
+                Placement="BottomEdgeAlignedLeft">
+                <MenuFlyoutItem
+                    Click="MenuFlyoutItemOnClick"
+                    IsEnabled="{x:Bind IsSpecialEnabled.Equals(x:True), Mode=OneWay}"
+                    Tag="{x:Bind TitlebarMenuFlyout}"
+                    Text="RFU Item1">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="{StaticResource PointerHand}" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem
+                    Click="MenuFlyoutItemOnClick"
+                    IsEnabled="{x:Bind IsSpecialEnabled.Equals(x:True), Mode=OneWay}"
+                    Tag="ActionSpecial"
+                    Text="RFU Item2">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="{StaticResource NoiseCancelation}" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutItem
+                    Click="MenuFlyoutItemOnClick"
+                    IsEnabled="{x:Bind local:App.Profile.FirstRun.Equals(x:False), Mode=OneWay}"
+                    Tag="ActionFirstRun"
+                    Text="Reset FirstRun">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="{StaticResource ActionCenter}" />
+                    </MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
+                <MenuFlyoutSeparator Width="200" />
+                <MenuFlyoutItem
+                    Click="MenuFlyoutItemOnClick"
+                    IsEnabled="True"
+                    Tag="ActionClose"
+                    Text="Close Application">
+                    <MenuFlyoutItem.Icon>
+                        <FontIcon Glyph="{StaticResource PowerButton}" />
+                    </MenuFlyoutItem.Icon>
+                    <MenuFlyoutItem.KeyboardAccelerators>
+                        <KeyboardAccelerator Key="F4" Modifiers="Menu" />
+                    </MenuFlyoutItem.KeyboardAccelerators>
+                </MenuFlyoutItem>
+            </MenuFlyout>
+        </Grid.Resources>
         <!--#region [Custom TitleBar]-->
         <Grid
             x:Name="CustomTitleBar"

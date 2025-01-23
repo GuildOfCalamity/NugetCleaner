@@ -156,7 +156,13 @@
                 FontFamily="{StaticResource PrimaryFont}"
                 FontSize="{StaticResource FontSizeLarge}"
                 Style="{StaticResource EnhancedButton}" />
-            <!--  Animation  -->
+
+            <!--<CheckBox
+                Content="Debug Mode"
+                IsChecked="False"
+                Style="{StaticResource GlowCheckBox}" />-->
+
+            <!--  Dot Animation  -->
             <Grid
                 x:Name="animGrid"
                 Width="200"
@@ -167,11 +173,11 @@
                     x:Name="circles"
                     AnimationDuration="0.7"
                     AnimationFrequency="0.1"
-                    CircleSize="16"
+                    CircleSize="15"
                     GradientColorOne="{StaticResource ACC2}"
                     GradientColorTwo="{StaticResource ACC1}"
                     IsRunning="False"
-                    ScaleFactor="1.4"
+                    ScaleFactor="1.25"
                     UseRadialGradient="False" />
             </Grid>
         </StackPanel>

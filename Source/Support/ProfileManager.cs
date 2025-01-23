@@ -55,7 +55,7 @@ public class AppSettings
     static readonly string p2 = "Bumper";
     static readonly string p3 = "Baby";
     static readonly byte[] entropyBytes = Encoding.UTF8.GetBytes($"{p1}{p3}{p2}");
-    static readonly string SettingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "profile.json");
+    static string SettingsFilePath = string.Empty;
     #endregion
 
     /// <summary>
@@ -63,13 +63,21 @@ public class AppSettings
     /// </summary>
     /// <param name="portableEncryption">
     /// <para>If true, the profile will use a standard <see cref="System.Security.Cryptography.Aes"/>-128 encryption process for identified properties, and the
-    /// settings will work if transfered to another machine.</para>
+    /// settings will work if transferred to another machine.</para>
     /// <para>If false, the profile will use <see cref="Windows.Security.Cryptography.DataProtection.DataProtectionProvider"/> for encryption, 
     /// but this will only be compatible machine-wide and is incompatible once copied to another machine.</para>
     /// </param>
     /// <returns><see cref="AppSettings"/> object</returns>
-    public static AppSettings Load(bool portableEncryption)
+    public static AppSettings Load(bool portableEncryption = true)
     {
+        if (string.IsNullOrEmpty(SettingsFilePath))
+        {
+            if (App.IsPackaged)
+                SettingsFilePath = Path.Combine(Windows.ApplicationModel.Package.Current.InstalledLocation.Path, "profile.json");
+            else
+                SettingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "profile.json");
+        }
+
         portable = portableEncryption;
         if (!File.Exists(SettingsFilePath))
         {
@@ -104,6 +112,14 @@ public class AppSettings
     /// </summary>
     public void Save()
     {
+        if (string.IsNullOrEmpty(SettingsFilePath))
+        {
+            if (App.IsPackaged)
+                SettingsFilePath = Path.Combine(Windows.ApplicationModel.Package.Current.InstalledLocation.Path, "profile.json");
+            else
+                SettingsFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "profile.json");
+        }
+
         try
         {
             EncryptSensitiveProperties();
@@ -255,11 +271,15 @@ public class AppSettings
             IBuffer encryptedBuffer = await provider.ProtectAsync(plainBuffer);
             return CryptographicBuffer.EncodeToBase64String(encryptedBuffer);
         }
+        catch (AggregateException ex) when (ex.InnerException != null)
+        {
+            Con.WriteLine($"[ERROR] Encrypting data: {ex.InnerException.Message}");
+        }
         catch (Exception ex)
         {
             Con.WriteLine($"[ERROR] Encrypting data: {ex.Message}");
-            return plainText;
         }
+        return plainText;
     }
 
     /// <summary>
@@ -307,11 +327,15 @@ public class AppSettings
             IBuffer decryptedBuffer = await provider.UnprotectAsync(encryptedBuffer);
             return CryptographicBuffer.ConvertBinaryToString(BinaryStringEncoding.Utf8, decryptedBuffer);
         }
+        catch (AggregateException ex) when (ex.InnerException != null)
+        {
+            Con.WriteLine($"[ERROR] Decrypting data: {ex.InnerException.Message}");
+        }
         catch (Exception ex)
         {
             Con.WriteLine($"[ERROR] Decrypting data: {ex.Message}");
-            return string.Empty;
         }
+        return string.Empty;
     }
 
     /// <summary>
@@ -343,12 +367,15 @@ public class AppSettings
     }
 
     /// <summary>
-    /// Portable method to encrypt a string
+    /// Portable method to encrypt a string via <see cref="System.Security.Cryptography.Aes"/>.
     /// </summary>
     /// <param name="plainText"></param>
     /// <returns>encrypted text</returns>
     static string EncryptPortable(string plainText, string hash)
     {
+        if (string.IsNullOrEmpty(hash) || hash.Length < 16)
+            throw new ArgumentException($"The hash must be a minimum of 16 characters for AES-128.", $"{nameof(hash)}");
+
         using (Aes aes = Aes.Create())
         {
             aes.Key = Encoding.UTF8.GetBytes($"{hash}"); // Must be 16 bytes for AES-128
@@ -361,7 +388,7 @@ public class AppSettings
                     {
                         using (var writer = new StreamWriter(cryptoStream))
                         {
-                            writer.Write(plainText);
+                            writer.Write(plainText); // write into the encryption stream
                         }
                         return Convert.ToBase64String(memoryStream.ToArray());
                     }
@@ -371,12 +398,15 @@ public class AppSettings
     }
 
     /// <summary>
-    /// Portable method to decrypt a string
+    /// Portable method to decrypt a string via <see cref="System.Security.Cryptography.Aes"/>.
     /// </summary>
     /// <param name="cipherText"></param>
     /// <returns>decrypted text</returns>
     static string DecryptPortable(string cipherText, string hash)
     {
+        if (string.IsNullOrEmpty(hash) || hash.Length < 16)
+            throw new ArgumentException($"The hash must be a minimum of 16 characters for AES-128.", $"{nameof(hash)}");
+
         using (Aes aes = Aes.Create())
         {
             aes.Key = Encoding.UTF8.GetBytes($"{hash}"); // Must be 16 bytes for AES-128
@@ -386,9 +416,11 @@ public class AppSettings
                 using (var memoryStream = new MemoryStream(Convert.FromBase64String(cipherText)))
                 {
                     using (var cryptoStream = new CryptoStream(memoryStream, decryptor, CryptoStreamMode.Read))
-                    using (var reader = new StreamReader(cryptoStream))
                     {
-                        return reader.ReadToEnd();
+                        using (var reader = new StreamReader(cryptoStream))
+                        {
+                            return reader.ReadToEnd();
+                        }
                     }
                 }
             }
@@ -504,76 +536,3 @@ public class AppSettings
     }
     #endregion
 }
-
-/* [EncryptionUtility Class]
-
-public static class EncryptionUtility
-{
-    #region [Private Members]
-    static readonly string p1 = "Rubber_";
-    static readonly string p2 = "Bumpers_";
-    static readonly string p3 = "Baby_";
-    static readonly byte[] _entropyBytes = Encoding.UTF8.GetBytes($"{p1}{p3}{p2}");
-    #endregion
-
-    /// <summary>
-    /// Utilizes <see cref="DataProtectionScope.LocalMachine"/> for the encryption process.
-    /// </summary>
-    /// <param name="unencryptedString">the clear text to encrypt</param>
-    /// <returns>Base64 encrypted string</returns>
-    public static string EncryptString(string unencryptedString)
-    {
-        if (string.IsNullOrEmpty(unencryptedString))
-            return string.Empty;
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return Convert.ToBase64String(ProtectedData.Protect(Encoding.UTF8.GetBytes(unencryptedString), _entropyBytes, DataProtectionScope.LocalMachine));
-        }
-        else
-        {
-            return FallbackEncryptDecrypt(unencryptedString, $"{p1}{p3}{p2}");
-        }
-    }
-
-    /// <summary>
-    /// Utilizes <see cref="DataProtectionScope.LocalMachine"/> for the decryption process.
-    /// </summary>
-    /// <param name="encryptedString">the encrypted text to decipher</param>
-    /// <returns>unencrypted string</returns>
-    public static string DecryptString(string encryptedString)
-    {
-        if (string.IsNullOrEmpty(encryptedString))
-            return string.Empty;
-
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            byte[] bytes = ProtectedData.Unprotect(Convert.FromBase64String(encryptedString), _entropyBytes, DataProtectionScope.LocalMachine);
-            return Encoding.UTF8.GetString(bytes);
-        }
-        else
-        {
-            return FallbackEncryptDecrypt(encryptedString, $"{p1}{p3}{p2}");
-        }
-    }
-
-    /// <summary>
-    /// Not secure, but better than clear text.
-    /// </summary>
-    static string FallbackEncryptDecrypt(string input, string key)
-    {
-        if (string.IsNullOrEmpty(input))
-            return string.Empty;
-
-        StringBuilder output = new StringBuilder();
-        int keyLength = key.Length;
-        for (int i = 0; i < input.Length; i++)
-        {
-            char encryptedChar = (char)(input[i] ^ key[i % keyLength]);
-            output.Append(encryptedChar);
-        }
-        return $"{output}";
-    }
-}
-
-*/

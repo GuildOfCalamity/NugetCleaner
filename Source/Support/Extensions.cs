@@ -83,7 +83,7 @@ public static class Extensions
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"GetWindowsVersionUsingAnalyticsInfo: {ex.Message}", $"{nameof(Extensions)}");
+            Debug.WriteLine($"[ERROR] GetWindowsVersionUsingAnalyticsInfo: {ex.Message}", $"{nameof(Extensions)}");
             return new Version(); // 0.0
         }
     }

@@ -1,29 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices.WindowsRuntime;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Data;
-using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-using Microsoft.UI.Xaml.Navigation;
-using Microsoft.UI.Xaml.Shapes;
-using Windows.ApplicationModel;
-using Windows.ApplicationModel.Activation;
-using Windows.Foundation;
-using Windows.Foundation.Collections;
-using Windows.Graphics;
-using Windows.UI.WindowManagement;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+
+using Windows.Management.Deployment;
+using Windows.Storage;
 
 namespace NugetCleaner;
 
@@ -37,8 +25,13 @@ public partial class App : Application
     public static FrameworkElement? MainRoot { get; set; }
     public static IntPtr WindowHandle { get; set; }
     public static AppSettings? Profile { get; set; }
+    public static AppWindow? AppWin { get; set; }
+    public static Version WindowsVersion => Extensions.GetWindowsVersionUsingAnalyticsInfo();
     public static bool IsWindowMaximized { get; set; }
-
+    
+    private NotificationManager? notificationManager;
+    // NOTE: If you would like to deploy this app as "Packaged", then open the csproj and change
+    //  <WindowsPackageType>None</WindowsPackageType> to <WindowsPackageType>MSIX</WindowsPackageType>
     // https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/#advantages-and-disadvantages-of-packaging-your-app
 #if IS_UNPACKAGED // We're using a custom PropertyGroup Condition we defined in the csproj to help us with the decision.
     public static bool IsPackaged { get => false; }
@@ -59,6 +52,13 @@ public partial class App : Application
         UnhandledException += ApplicationUnhandledException;
         #endregion
         this.InitializeComponent();
+        
+        // For packaged app only.
+        if (App.IsPackaged)
+        {
+            ApplicationData.Current.DataChanged += OnAppDataChanged;
+            notificationManager = new NotificationManager();
+        }
     }
 
     /// <summary>
@@ -68,32 +68,35 @@ public partial class App : Application
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         m_window = new MainWindow();
-        var appWin = GetAppWindow(m_window);
-        if (appWin != null)
+        AppWin = GetAppWindow(m_window);
+        if (AppWin != null)
         {
             // Gets or sets a value that indicates whether this window will appear in various system representations, such as ALT+TAB and taskbar.
-            appWin.IsShownInSwitchers = true;
+            AppWin.IsShownInSwitchers = true;
 
             // We don't have the Closing event exposed by default, so we'll use the AppWindow to compensate.
-            appWin.Closing += (s, e) =>
+            AppWin.Closing += (s, e) =>
             {
                 App.IsClosing = true;
                 Debug.WriteLine($"[INFO] Application closing detected at {DateTime.Now.ToString("hh:mm:ss.fff tt")}");
-                Process proc = Process.GetCurrentProcess();
-                Profile.Metrics = $"Process used {proc.PrivateMemorySize64 / 1024 / 1024}MB of memory and {proc.TotalProcessorTime.ToReadableString()} TotalProcessorTime on {Environment.ProcessorCount} possible cores.";
-                Profile.LastUse = DateTime.Now;
-                Profile.Version = $"{GetCurrentAssemblyVersion()}";
-                Profile.Save();
+                if (Profile is not null)
+                {
+                    Process proc = Process.GetCurrentProcess();
+                    Profile!.Metrics = $"Process used {proc.PrivateMemorySize64 / 1024 / 1024}MB of memory and {proc.TotalProcessorTime.ToReadableString()} TotalProcessorTime on {Environment.ProcessorCount} possible cores.";
+                    Profile!.LastUse = DateTime.Now;
+                    Profile!.Version = GetCurrentAssemblyVersion();
+                    Profile?.Save();
+                }
             };
 
             // Destroying is always called, but Closing is only called when the application is shutdown normally.
-            appWin.Destroying += (s, e) =>
+            AppWin.Destroying += (s, e) =>
             {
                 Debug.WriteLine($"[INFO] Application destroying detected at {DateTime.Now.ToString("hh:mm:ss.fff tt")}");
             };
 
             // The changed event contains the valuables, such as: position, size, visibility, z-order and presenter.
-            appWin.Changed += (s, args) =>
+            AppWin.Changed += (s, args) =>
             {
                 if (args.DidSizeChange)
                 {
@@ -101,11 +104,11 @@ public partial class App : Application
                     if (s.Presenter is not null && s.Presenter is OverlappedPresenter op)
                         IsWindowMaximized = op.State is OverlappedPresenterState.Maximized;
 
-                    if (!IsWindowMaximized)
+                    if (!IsWindowMaximized && Profile is not null)
                     {
                         // Update width and height for profile settings.
-                        Profile.WindowHeight = s.Size.Height;
-                        Profile.WindowWidth = s.Size.Width;
+                        Profile!.WindowHeight = s.Size.Height;
+                        Profile!.WindowWidth = s.Size.Width;
                     }
                 }
 
@@ -121,12 +124,12 @@ public partial class App : Application
                             {
                                 Debug.WriteLine($"[INFO] Window minimized");
                             }
-                            else if (op.State != OverlappedPresenterState.Maximized)
+                            else if (op.State != OverlappedPresenterState.Maximized && Profile is not null)
                             {
                                 Debug.WriteLine($"[INFO] Updating window position to {s.Position.X},{s.Position.Y} and size to {s.Size.Width},{s.Size.Height}");
                                 // Update X and Y for profile settings.
-                                Profile.WindowLeft = s.Position.X;
-                                Profile.WindowTop = s.Position.Y;
+                                Profile!.WindowLeft = s.Position.X;
+                                Profile!.WindowTop = s.Position.Y;
                             }
                             else
                             {
@@ -143,11 +146,21 @@ public partial class App : Application
 
             // Set the application icon.
             if (IsPackaged)
-                appWin.SetIcon(System.IO.Path.Combine(Windows.ApplicationModel.Package.Current.InstalledLocation.Path, $"Assets/AppIcon.ico"));
+            {
+                AppWin.SetIcon(System.IO.Path.Combine(Windows.ApplicationModel.Package.Current.InstalledLocation.Path, $"Assets/AppIcon.ico"));
+                GetMsixPackageInfo(Windows.ApplicationModel.Package.Current.Id.FullName);
+            }
             else
-                appWin.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, $"Assets/AppIcon.ico"));
+                AppWin.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, $"Assets/AppIcon.ico"));
 
-            appWin.TitleBar.IconShowOptions = IconShowOptions.ShowIconAndSystemMenu;
+            AppWin.TitleBar.IconShowOptions = IconShowOptions.ShowIconAndSystemMenu;
+        }
+
+        // For AppNotificationManager
+        if (App.IsPackaged)
+        {
+            notificationManager?.Init();
+            Microsoft.Windows.AppNotifications.AppNotificationManager.Default.Register(Assembly.GetExecutingAssembly().GetName().Name, new Uri("ms-appx:///Assets/NoticeIcon.png"));
         }
 
         m_window.Activate();
@@ -165,14 +178,25 @@ public partial class App : Application
             Profile.ApiSecret = "secretApiKey123"; // This will also be encrypted
             Profile.Save();
 
-            appWin?.Resize(new Windows.Graphics.SizeInt32(m_width, m_height));
+            AppWin?.Resize(new Windows.Graphics.SizeInt32(m_width, m_height));
             CenterWindow(m_window);
         }
         else
         {
-            appWin?.MoveAndResize(new Windows.Graphics.RectInt32(Profile.WindowLeft, Profile.WindowTop, Profile.WindowWidth, Profile.WindowHeight), Microsoft.UI.Windowing.DisplayArea.Primary);
+            AppWin?.MoveAndResize(new Windows.Graphics.RectInt32(Profile.WindowLeft, Profile.WindowTop, Profile.WindowWidth, Profile.WindowHeight), Microsoft.UI.Windowing.DisplayArea.Primary);
         }
 
+        //ListInstalledMsixPackages();
+
+    }
+
+    public static void OnNotificationInvoked(Microsoft.Windows.AppNotifications.AppNotificationManager sender, Microsoft.Windows.AppNotifications.AppNotificationActivatedEventArgs args)
+    {
+        Debug.WriteLine($"[INFO] OnNotificationInvoked: {args.Argument}");
+        foreach (var a in args.Arguments)
+        {
+            Debug.WriteLine($" - {a.Key}:{a.Value}");
+        }
     }
 
     #region [Window Helpers]
@@ -198,6 +222,24 @@ public partial class App : Application
         Microsoft.UI.Windowing.AppWindow appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
 
         return appWindow;
+    }
+
+    /// <summary>
+    /// If <see cref="App.WindowHandle"/> is set then a call to User32 <see cref="SetForegroundWindow(nint)"/> 
+    /// will be invoked. I tried using the native OverlappedPresenter.Restore(true), but that does not work.
+    /// </summary>
+    public static void ActivateMainWindow()
+    {
+        if (App.WindowHandle != IntPtr.Zero)
+        {
+            //if (!IsWindowVisible(App.WindowHandle))
+            _ = SetForegroundWindow(App.WindowHandle);
+        }
+        
+        if (AppWin is not null && AppWin.Presenter is not null && AppWin.Presenter is OverlappedPresenter op)
+        {
+            op.Restore(true);
+        }
     }
 
     /// <summary>
@@ -337,6 +379,9 @@ public partial class App : Application
         if (sender is null)
             return;
 
+        if (App.IsPackaged)
+            notificationManager?.Unregister();
+
         if (sender is AppDomain ad)
         {
             Debug.WriteLine($"[OnProcessExit]", $"{nameof(App)}");
@@ -375,6 +420,30 @@ public partial class App : Application
         }
         e.SetObserved(); // suppress and handle manually
     }
+
+    void OnAppDataChanged(Windows.Storage.ApplicationData sender, object args)
+    {
+        Debug.WriteLine($"AppVersion {sender.Version} change event. AppDataArgs: {args}");
+    }
+
+    /// <summary>
+    /// Simplified debug logger for app-wide use.
+    /// </summary>
+    /// <param name="message">the text to append to the file</param>
+    public static void DebugLog(string message)
+    {
+        try
+        {
+            if (App.IsPackaged)
+                System.IO.File.AppendAllText(System.IO.Path.Combine(Windows.ApplicationModel.Package.Current.InstalledLocation.Path, "Debug.log"), $"[{DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.fff tt")}] {message}{Environment.NewLine}");
+            else
+                System.IO.File.AppendAllText(System.IO.Path.Combine(System.AppContext.BaseDirectory, "Debug.log"), $"[{DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.fff tt")}] {message}{Environment.NewLine}");
+        }
+        catch (Exception)
+        {
+            Debug.WriteLine($"[{DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.fff tt")}] {message}");
+        }
+    }
     #endregion
 
     #region [Reflection Helpers]
@@ -396,7 +465,7 @@ public partial class App : Application
     /// <summary>
     /// Returns the AssemblyVersion, not the FileVersion.
     /// </summary>
-    public static Version GetCurrentAssemblyVersion() => System.Reflection.Assembly.GetExecutingAssembly().GetName().Version ?? new Version();
+    public static string? GetCurrentAssemblyVersion() => $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}";
     #endregion
 
     #region [Dialog Helper]
@@ -512,22 +581,79 @@ public partial class App : Application
     }
     #endregion
 
-    /// <summary>
-    /// Simplified debug logger for app-wide use.
-    /// </summary>
-    /// <param name="message">the text to append to the file</param>
-    public static void DebugLog(string message)
+    #region [Package Helpers]
+    public static void ListInstalledMsixPackages()
     {
         try
         {
-            if (App.IsPackaged)
-                System.IO.File.AppendAllText(System.IO.Path.Combine(Windows.ApplicationModel.Package.Current.InstalledLocation.Path, "Debug.log"), $"[{DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.fff tt")}] {message}{Environment.NewLine}");
-            else
-                System.IO.File.AppendAllText(System.IO.Path.Combine(System.AppContext.BaseDirectory, "Debug.log"), $"[{DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.fff tt")}] {message}{Environment.NewLine}");
+            var packageManager = new PackageManager();
+            var packages = packageManager.FindPackages();
+
+            Debug.WriteLine("[INFO] Installed Packages:");
+            foreach (var package in packages)
+            {
+                Debug.WriteLine($" - {package.Id.FullName}");
+            }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            Debug.WriteLine($"[{DateTime.Now.ToString("yyyy-MM-dd hh:mm:ss.fff tt")}] {message}");
+            Debug.WriteLine($"[ERROR] Failed to list packages: {ex.Message}");
         }
     }
+
+    public static void GetMsixPackageInfo(string packageFullName)
+    {
+        try
+        {
+            var packageManager = new PackageManager();
+            var package = packageManager.FindPackage(packageFullName);
+
+            if (package != null)
+            {
+                Debug.WriteLine($"[INFO] Package Name......: {package.Id.Name}");
+                Debug.WriteLine($"[INFO] Package FullName..: {package.Id.FullName}");
+                Debug.WriteLine($"[INFO] Version...........: {package.Id.Version.Major}.{package.Id.Version.Minor}.{package.Id.Version.Build}.{package.Id.Version.Revision}");
+                Debug.WriteLine($"[INFO] Publisher.........: {package.Id.Publisher}");
+                Debug.WriteLine($"[INFO] Installed Location: {package.InstalledLocation.Path}");
+                Debug.WriteLine($"[INFO] DateCreated.......: {package.InstalledLocation.DateCreated}");
+                //Debug.WriteLine($"[INFO] EffectivePath.....: {package.EffectivePath}");
+                //Debug.WriteLine($"[INFO] InstalledPath.....: {package.InstalledPath}");
+            }
+            else
+            {
+                Debug.WriteLine($"[WARNING] Package '{packageFullName}' not found.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ERROR] Failed to retrieve package '{packageFullName}' info: {ex.Message}");
+        }
+    }
+    #endregion
+
+    #region [User32 Imports]
+    static int SW_HIDE = 0;
+    static int SW_SHOWNORMAL = 1;
+    static int SW_SHOWMINIMIZED = 2;
+    static int SW_SHOWMAXIMIZED = 3;
+    static int SW_SHOWNOACTIVATE = 4;
+    static int SW_SHOW = 5;
+    static int SW_MINIMIZE = 6;
+    static int SW_SHOWMINNOACTIVE = 7;
+    static int SW_SHOWNA = 8;
+    static int SW_RESTORE = 9;
+    static int SW_SHOWDEFAULT = 10;
+    static int SW_FORCEMINIMIZE = 11;
+    [DllImport("User32.dll")]
+    internal static extern bool ShowWindow(IntPtr handle, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern bool IsWindowVisible(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    internal static extern IntPtr GetActiveWindow();
+    #endregion
 }

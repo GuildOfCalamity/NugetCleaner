@@ -6,5 +6,15 @@
   <PropertyGroup>
     <ActiveDebugProfile>NugetCleaner (Unpackaged)</ActiveDebugProfile>
   </PropertyGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Page Update="Dialogs\AboutDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Dialogs\CleanupDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Update="Dialogs\CloseAppDialog.xaml">
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
 </Project>

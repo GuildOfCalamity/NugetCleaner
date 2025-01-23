@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
-using Con = System.Diagnostics.Debug;
 
 namespace NugetCleaner.Support
 {
@@ -15,6 +15,11 @@ namespace NugetCleaner.Support
         public long Size { get; set; }
     }
 
+    /// <summary>
+    /// NOTE: Be sure last access timestamps are enabled on your system by running 
+    /// "fsutil behavior query disablelastaccess" using an admin command prompt.
+    /// The results should report "DisableLastAccess = 2  (System Managed, Disabled)".
+    /// </summary>
     public class ScanEngine
     {
         public static event Action<long>? OnScanComplete = (size) => { };
@@ -64,7 +69,7 @@ namespace NugetCleaner.Support
             }
             catch (Exception ex)
             {
-                Con.WriteLine($"[ERROR] {ex.Message}");
+                Debug.WriteLine($"[ERROR] {ex.Message}");
                 OnScanError?.Invoke(ex);
             }
         }
@@ -102,7 +107,7 @@ namespace NugetCleaner.Support
             }
             catch (Exception ex)
             {
-                Con.WriteLine($"[ERROR] {ex.Message}");
+                Debug.WriteLine($"[ERROR] {ex.Message}");
                 OnScanError?.Invoke(ex);
             }
         }
@@ -127,7 +132,7 @@ namespace NugetCleaner.Support
                     }
                     catch (Exception ex)
                     {
-                        Con.WriteLine($"[ERROR] Accessing file: {file}. {ex.Message}");
+                        Debug.WriteLine($"[ERROR] Accessing file: {file}. {ex.Message}");
                         OnScanError?.Invoke(ex);
                     }
                 }
@@ -141,14 +146,14 @@ namespace NugetCleaner.Support
                     }
                     catch (Exception ex)
                     {
-                        Con.WriteLine($"[ERROR] Accessing folder: {subfolder}. {ex.Message}");
+                        Debug.WriteLine($"[ERROR] Accessing folder: {subfolder}. {ex.Message}");
                         OnScanError?.Invoke(ex);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Con.WriteLine($"[ERROR] Accessing folder: {folderPath}. {ex.Message}");
+                Debug.WriteLine($"[ERROR] Accessing folder: {folderPath}. {ex.Message}");
                 OnScanError?.Invoke(ex);
             }
             return totalSize;
@@ -188,6 +193,26 @@ namespace NugetCleaner.Support
                     if (dt < File.GetLastAccessTime(f))
                     {
                         dt = File.GetLastAccessTime(f);
+                    }
+                }
+                return dt;
+            }
+            catch (Exception) { return DateTime.Now; }
+        }
+
+        static DateTime RecursiveFindLastWriteTime(string dir, DateTime dt)
+        {
+            try
+            {
+                foreach (string subdir in Directory.GetDirectories(dir))
+                {
+                    dt = RecursiveFindLastWriteTime(subdir, dt);
+                }
+                foreach (string f in Directory.GetFiles(dir))
+                {
+                    if (dt < File.GetLastWriteTime(f))
+                    {
+                        dt = File.GetLastWriteTime(f);
                     }
                 }
                 return dt;
