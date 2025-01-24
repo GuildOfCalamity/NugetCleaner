@@ -14,16 +14,41 @@
     PrimaryButtonText="OK"
     SecondaryButtonText=""
     mc:Ignorable="d">
+    <!--
+        NOTE: Absolutely DO NOT set the button styles in the ContentDialog header above.
+        e.g. PrimaryButtonStyle="{ThemeResource AccentButtonStyle}", this will cause
+        unhandled exceptions that will lead you to believe the issue is the XamlRoot.
+        This appears to only be an issue when invoking ContentDialogs from outside
+        of the MainWindow's XAML VisualTree.
+        I have added a note about this under the Microsoft-UI-XAML Issues:
+        https://github.com/microsoft/microsoft-ui-xaml/issues/2504#issuecomment-2612751024
+    -->
+    <ContentDialog.PrimaryButtonStyle>
+        <Style TargetType="Button">
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+    </ContentDialog.PrimaryButtonStyle>
+    <ContentDialog.SecondaryButtonStyle>
+        <Style TargetType="Button">
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+    </ContentDialog.SecondaryButtonStyle>
+    <ContentDialog.CloseButtonStyle>
+        <Style TargetType="Button">
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+    </ContentDialog.CloseButtonStyle>
     <ContentDialog.Title>
-        <Grid MinWidth="400" HorizontalAlignment="Stretch">
+        <Grid MinWidth="450" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock
                 Grid.Column="0"
+                Margin="0,4,0,0"
                 HorizontalAlignment="Left"
-                VerticalAlignment="Center"
+                VerticalAlignment="Top"
                 FontSize="{StaticResource FontSizeHuge}"
                 Foreground="{StaticResource SecondaryBrush}"
                 Shadow="{ThemeResource CommandBarFlyoutOverflowShadow}"
@@ -31,19 +56,12 @@
             <Image
                 Grid.Column="1"
                 Height="60"
-                Margin="0,0,-1,0"
+                Margin="0,0,4,0"
                 HorizontalAlignment="Right"
                 VerticalAlignment="Center"
                 Source="ms-appx:///Assets/NoticeIcon.png" />
         </Grid>
     </ContentDialog.Title>
-    <!--
-        NOTE: Absolutely DO NOT set the button styles in the ContentDialog header above.
-        e.g. PrimaryButtonStyle="{ThemeResource AccentButtonStyle}", this will cause
-        unhandled exceptions that will lead you to believe the issue is the XamlRoot.
-        I have added a note about this under the Microsoft-UI-XAML Issues:
-        https://github.com/microsoft/microsoft-ui-xaml/issues/2504#issuecomment-2612751024
-    -->
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />

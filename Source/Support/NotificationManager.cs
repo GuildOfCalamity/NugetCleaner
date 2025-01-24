@@ -151,6 +151,23 @@ public class ToastWithAvatar
         return appNotification.Id != 0; // return true (indicating success) if the toast was sent (if it has an Id)
     }
 
+    public static bool CreateActivationToast()
+    {
+        var toastContent = new AppNotificationBuilder()
+            .AddText("Notification Title")
+            .AddText("Notification Body")
+            .AddArgument("action", "openApp")
+            .AddButton(new AppNotificationButton("Open App"))
+            //.SetToastActivatesApp()
+            .BuildNotification();
+
+        toastContent.Expiration = DateTime.Now.AddDays(2);
+        toastContent.ExpiresOnReboot = true;
+        AppNotificationManager.Default.Show(toastContent);
+
+        return toastContent.Id != 0; // return true (indicating success) if the toast was sent (if it has an Id)
+    }
+
     public static void NotificationReceived(AppNotificationActivatedEventArgs args)
     {
         Debug.WriteLine($"[INFO] NotificationReceived: {args.Argument}");

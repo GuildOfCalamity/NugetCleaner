@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using NugetCleaner.Dialogs;
 using NugetCleaner.Support;
+using Windows.ApplicationModel.Activation;
 using Windows.Management.Deployment;
 using Windows.Storage;
 
@@ -71,6 +72,36 @@ public partial class App : Application
     protected override void OnLaunched(Microsoft.UI.Xaml.LaunchActivatedEventArgs args)
     {
         m_window = new MainWindow();
+
+        #region [Determining AppInstance activation kind]
+        bool isRedirect = false;
+        // Find out what kind of activation this is.
+        var eventArgs = Microsoft.Windows.AppLifecycle.AppInstance.GetCurrent().GetActivatedEventArgs();
+        if (eventArgs.Kind == Microsoft.Windows.AppLifecycle.ExtendedActivationKind.File)
+        {
+            var fileActivationArguments = eventArgs.Data as Windows.ApplicationModel.Activation.FileActivatedEventArgs;
+            Debug.WriteLine($"[INFO] {fileActivationArguments?.Files[0].Path}");
+            // This is a file activation: here we'll get the file information,
+            // and register the file name as our instance key.
+            if (eventArgs.Data is IFileActivatedEventArgs fileArgs)
+            {
+                IStorageItem file = fileArgs.Files[0];
+                var keyInstance = Microsoft.Windows.AppLifecycle.AppInstance.FindOrRegisterForKey(file.Name);
+                // If we successfully registered the file name, we must be the
+                // only instance running that was activated for this file.
+                if (keyInstance != null && !keyInstance.IsCurrent)
+                {
+                    isRedirect = true;
+                    keyInstance.RedirectActivationToAsync(eventArgs).GetAwaiter().GetResult();
+                }
+            }
+        }
+        else
+        {
+            Debug.WriteLine($"[INFO] ActivationKind => {eventArgs.Kind}");
+        }
+        #endregion
+
         AppWin = GetAppWindow(m_window);
         if (AppWin != null)
         {
@@ -165,6 +196,8 @@ public partial class App : Application
             notificationManager?.Init();
             Microsoft.Windows.AppNotifications.AppNotificationManager.Default.Register(Assembly.GetExecutingAssembly().GetName().Name, new Uri("ms-appx:///Assets/NoticeIcon.png"));
         }
+
+        
 
         m_window.Activate();
 
@@ -458,6 +491,11 @@ public partial class App : Application
     /// Returns the declaring type's namespace.
     /// </summary>
     public static string? GetCurrentNamespace() => System.Reflection.MethodBase.GetCurrentMethod()?.DeclaringType?.Namespace;
+
+    /// <summary>
+    /// Returns the declaring type's namespace.
+    /// </summary>
+    public static string? GetFormattedNamespace() => System.Reflection.MethodBase.GetCurrentMethod()?.DeclaringType?.Namespace?.SeparateCamelCase();
 
     /// <summary>
     /// Returns the declaring type's full name.
