@@ -16,6 +16,7 @@
 - A cleaner utility for outdated packages which can consume a large amount of space on your local storage.
 	- The `Report Only` mode will scan for and display package total sizes based on the stale amount (in days).
 	- Because this is meant to run as a self-contained/stand-alone utility, I suggest leaving the profile as `Unpackaged`.
+	- Don't forget to give a ⭐ if you find any of my code helpful.
 
 ## 💻 Screenshot
 ![Sample](Source/Assets/Screenshot.png)
