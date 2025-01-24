@@ -5,8 +5,5 @@ namespace NugetCleaner.Dialogs;
 
 public sealed partial class CloseAppDialog : ContentDialog
 {
-    public CloseAppDialog()
-    {
-        this.InitializeComponent();
-    }
+    public CloseAppDialog() => this.InitializeComponent();
 }

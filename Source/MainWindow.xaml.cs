@@ -149,7 +149,15 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
                         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, async () =>
                         {
                             //await ContentDialogHelper.ShowAsync(new AppRunningDialog(), Content as FrameworkElement);
-                            await App.ShowDialogBox("ActivationKind.Launch", "WindowMessage.WM_COPYDATA => ActivationKind.Launch", "OK", "", null, null, null);
+                            await App.ShowContentDialog(
+                                "ActivationKind.Launch", 
+                                "WindowMessage.WM_COPYDATA => ActivationKind.Launch", 
+                                "OK", 
+                                "",
+                                400,
+                                null, 
+                                null, 
+                                null);
                         });
                     }
                     else if ((ActivationKind)copyDataStruct.dwData is ActivationKind.CommandLineLaunch ||
@@ -422,7 +430,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             {
                 if (this.Content is not null && !App.IsClosing)
                 {
-                    ContentDialogResult result = await Support.DialogHelper.ShowAsync(new Dialogs.CloseAppDialog(), Content as FrameworkElement);
+                    ContentDialogResult result = await DialogHelper.ShowAsync(new Dialogs.CloseAppDialog(), Content as FrameworkElement);
                     if (result is ContentDialogResult.Primary)
                     {   // The closing event will be picked up in App.xaml.cs
                         this.Close();

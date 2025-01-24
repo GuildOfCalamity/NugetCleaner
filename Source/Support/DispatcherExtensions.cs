@@ -406,6 +406,78 @@ public static class DispatcherExtensions
     }
 
     /// <summary>
+    /// Executes the provided asynchronous function on the DispatcherQueue.
+    /// </summary>
+    /// <param name="dispatcherQueue">The DispatcherQueue instance.</param>
+    /// <param name="action">The asynchronous action to execute.</param>
+    /// <returns>A Task representing the asynchronous operation.</returns>
+    public static Task EnqueueAsyncAlt(this DispatcherQueue dispatcherQueue, Func<Task> action)
+    {
+        // Validate arguments
+        if (dispatcherQueue is null)
+            throw new ArgumentNullException(nameof(dispatcherQueue));
+        if (action is null)
+            throw new ArgumentNullException(nameof(action));
+
+        var taskCompletionSource = new TaskCompletionSource();
+        bool enqueued = dispatcherQueue.TryEnqueue(async () =>
+        {
+            try
+            {
+                await action();
+                taskCompletionSource.SetResult();
+            }
+            catch (Exception ex)
+            {
+                taskCompletionSource.SetException(ex);
+            }
+        });
+
+        if (!enqueued)
+        {
+            taskCompletionSource.SetException(new InvalidOperationException("Failed to enqueue operation on DispatcherQueue."));
+        }
+
+        return taskCompletionSource.Task;
+    }
+
+    /// <summary>
+    /// Executes the provided synchronous function on the DispatcherQueue.
+    /// </summary>
+    /// <param name="dispatcherQueue">The DispatcherQueue instance.</param>
+    /// <param name="action">The synchronous action to execute.</param>
+    /// <returns>A Task representing the completion of the action.</returns>
+    public static Task EnqueueAsyncAlt(this DispatcherQueue dispatcherQueue, Action action)
+    {
+        // Validate arguments
+        if (dispatcherQueue is null)
+            throw new ArgumentNullException(nameof(dispatcherQueue));
+        if (action is null)
+            throw new ArgumentNullException(nameof(action));
+
+        var taskCompletionSource = new TaskCompletionSource();
+        bool enqueued = dispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                action();
+                taskCompletionSource.SetResult();
+            }
+            catch (Exception ex)
+            {
+                taskCompletionSource.SetException(ex);
+            }
+        });
+
+        if (!enqueued)
+        {
+            taskCompletionSource.SetException(new InvalidOperationException("Failed to enqueue operation on DispatcherQueue."));
+        }
+
+        return taskCompletionSource.Task;
+    }
+
+    /// <summary>
     /// Creates an <see cref="InvalidOperationException"/> to return when an enqueue operation fails.
     /// </summary>
     /// <param name="message">The message of the exception.</param>

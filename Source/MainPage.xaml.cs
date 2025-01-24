@@ -176,15 +176,20 @@ public sealed partial class MainPage : Page
         if (App.Profile.FirstRun && this.Content is not null)
         {
             App.Profile.FirstRun = false;
-            ContentDialogResult result = await Support.DialogHelper.ShowAsync(new Dialogs.AboutDialog(), Content as FrameworkElement);
-            if (result is ContentDialogResult.Primary)
-            {
-                Debug.WriteLine("[INFO] User clicked 'OK'.");
-            }
-            else if (result is ContentDialogResult.None)
-            {
-                Debug.WriteLine("[INFO] User clicked 'Cancel'.");
-            }
+            ContentDialogResult result = await DialogHelper.ShowAsync(new Dialogs.AboutDialog(), this.Content as FrameworkElement);
+            if (result is ContentDialogResult.Primary) { Debug.WriteLine("[INFO] User clicked 'OK'."); }
+            else if (result is ContentDialogResult.None) { Debug.WriteLine("[INFO] User clicked 'Cancel'."); }
+            #region [previous technique]
+            //await App.ShowContentDialog(
+            //    $"About {App.GetCurrentNamespace()?.SeparateCamelCase()}", 
+            //    $"A cleaner utility for outdated NuGet packages, which can consume a large amount of space on your local storage.{Environment.NewLine}{Environment.NewLine}The \"Report Only\" mode will scan for and display package total sizes based on the stale amount, in days.{Environment.NewLine}{Environment.NewLine}Application version {App.GetCurrentAssemblyVersion()}",
+            //    "OK",
+            //    "",
+            //    400,
+            //    null,
+            //    null,
+            //    new Uri($"ms-appx:///Assets/AppIcon.png"));
+            #endregion
         }
         #endregion
     }
@@ -198,13 +203,9 @@ public sealed partial class MainPage : Page
 
             if (!_reportMode)
             {
-                //await App.ShowDialogBox($"Confirmation", $"This could result is deleted files, they{Environment.NewLine}will not be moved to the recycling bin.{Environment.NewLine}{Environment.NewLine}Are you sure?", "YES", "NO",
-                //    delegate { Debug.WriteLine("[INFO] User agrees to proceed."); },
-                //    delegate { Debug.WriteLine("[INFO] User canceled the process."); _cts.Cancel(); }, 
-                //    new Uri($"ms-appx:///Assets/WarningIcon.png"));
-                if (this.Content is not null && !App.IsClosing)
+                if (!App.IsClosing)
                 {
-                    ContentDialogResult result = await Support.DialogHelper.ShowAsync(new Dialogs.CleanupDialog(), Content as FrameworkElement);
+                    ContentDialogResult result = await DialogHelper.ShowAsync(new Dialogs.CleanupDialog(), this.Content as FrameworkElement);
                     if (result is ContentDialogResult.Primary)
                     {
                         Debug.WriteLine("[INFO] User agrees to proceed.");
@@ -215,6 +216,17 @@ public sealed partial class MainPage : Page
                         Debug.WriteLine("[INFO] User canceled the process.");
                         _cts.Cancel();
                     }
+                    #region [previous technique]
+                    //await App.ShowContentDialog(
+                    //    $"Confirmation",
+                    //    $"This could result is deleted files, they will not be moved to the recycling bin.{Environment.NewLine}{Environment.NewLine}Are you sure?",
+                    //    "Yes",
+                    //    "No",
+                    //    300,
+                    //    delegate { Debug.WriteLine("[INFO] User agrees to proceed."); LogMessages.Clear(); },
+                    //    delegate { Debug.WriteLine("[INFO] User canceled the process."); _cts.Cancel(); },
+                    //    new Uri($"ms-appx:///Assets/AlertIcon.png"));
+                    #endregion
                 }
             }
             else
@@ -228,10 +240,10 @@ public sealed partial class MainPage : Page
         {
             UpdateMessage("Canceling...");
             _cts?.Cancel();
-            btnRun.IsEnabled = false;
+            btnRun.IsEnabled = _running = false;
             DispatcherQueue?.EnqueueAsync(async () =>
             {
-                await Task.Delay(2000);
+                await Task.Delay(1500);
                 btnRun.IsEnabled = true;
                 if (_reportMode)
                     btnRun.Content = "Scan Packages";

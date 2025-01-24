@@ -8,8 +8,10 @@ using System.Threading.Tasks;
 using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
-
+using NugetCleaner.Dialogs;
+using NugetCleaner.Support;
 using Windows.Management.Deployment;
 using Windows.Storage;
 
@@ -28,7 +30,8 @@ public partial class App : Application
     public static AppWindow? AppWin { get; set; }
     public static Version WindowsVersion => Extensions.GetWindowsVersionUsingAnalyticsInfo();
     public static bool IsWindowMaximized { get; set; }
-    
+    public static FontFamily? EmbeddedFont { get; set; }
+
     private NotificationManager? notificationManager;
     // NOTE: If you would like to deploy this app as "Packaged", then open the csproj and change
     //  <WindowsPackageType>None</WindowsPackageType> to <WindowsPackageType>MSIX</WindowsPackageType>
@@ -187,7 +190,7 @@ public partial class App : Application
         }
 
         //ListInstalledMsixPackages();
-
+        //EmbeddedFont = EmbeddedHelper.LoadEmbeddedFontFamily("Hack.ttf", "Hack");
     }
 
     public static void OnNotificationInvoked(Microsoft.Windows.AppNotifications.AppNotificationManager sender, Microsoft.Windows.AppNotifications.AppNotificationActivatedEventArgs args)
@@ -394,10 +397,14 @@ public partial class App : Application
     void CurrentDomainFirstChanceException(object? sender, System.Runtime.ExceptionServices.FirstChanceExceptionEventArgs e)
     {
         Debug.WriteLine($"[ERROR] First chance exception from {sender?.GetType()}: {e.Exception.Message}");
-        DebugLog($"First chance exception from {sender?.GetType()}: {e.Exception.Message}");
-        if (e.Exception.InnerException != null)
-            DebugLog($"  ⇨ InnerException: {e.Exception.InnerException.Message}");
-        DebugLog($"First chance exception StackTrace: {Environment.StackTrace}");
+        // Ignore profile encryption property tests.
+        if (!string.IsNullOrEmpty(e.Exception.Message) && !e.Exception.Message.Contains("The input is not a valid Base-64 string"))
+        {
+            DebugLog($"First chance exception from {sender?.GetType()}: {e.Exception.Message}");
+            if (e.Exception.InnerException != null)
+                DebugLog($"  ⇨ InnerException: {e.Exception.InnerException.Message}");
+            DebugLog($"First chance exception StackTrace: {Environment.StackTrace}");
+        }
     }
 
     void CurrentDomainUnhandledException(object? sender, System.UnhandledExceptionEventArgs e)
@@ -481,7 +488,7 @@ public partial class App : Application
     /// but a <see cref="Microsoft.UI.Xaml.XamlRoot"/> must be defined since it inherits from <see cref="Microsoft.UI.Xaml.Controls.Control"/>.
     /// The <see cref="SemaphoreSlim"/> was added to prevent "COMException: Only one ContentDialog can be opened at a time."
     /// </remarks>
-    public static async Task ShowDialogBox(string title, string message, string primaryText, string cancelText, Action? onPrimary, Action? onCancel, Uri? imageUri)
+    public static async Task ShowContentDialog(string title, string message, string primaryText, string cancelText, double minWidth, Action? onPrimary, Action? onCancel, Uri? imageUri)
     {
         if (App.MainRoot?.XamlRoot == null) { return; }
 
@@ -489,13 +496,23 @@ public partial class App : Application
 
         #region [Initialize Assets]
         double fontSize = 14;
-        Microsoft.UI.Xaml.Media.FontFamily fontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Consolas");
+        double brdrThickness = 4;
+        if (minWidth <= 0)
+            minWidth = 400;
+        Microsoft.UI.Xaml.Media.FontFamily fontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe");
+        Microsoft.UI.Xaml.Media.Brush brdrBrush = new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255,20,20,20));
 
         if (App.Current.Resources.TryGetValue("FontSizeMedium", out object _))
             fontSize = (double)App.Current.Resources["FontSizeMedium"];
 
-        if (App.Current.Resources.TryGetValue("PrimaryFont", out object _))
-            fontFamily = (Microsoft.UI.Xaml.Media.FontFamily)App.Current.Resources["PrimaryFont"];
+        //if (App.Current.Resources.TryGetValue("PrimaryFont", out object _))
+        //    fontFamily = (Microsoft.UI.Xaml.Media.FontFamily)App.Current.Resources["PrimaryFont"];
+
+        if (EmbeddedFont is not null)
+            fontFamily = EmbeddedFont;
+
+        if (App.Current.Resources.TryGetValue("GradientBarBrush", out object _))
+            brdrBrush = (Microsoft.UI.Xaml.Media.Brush)App.Current.Resources["GradientBarBrush"];
 
         StackPanel panel = new StackPanel()
         {
@@ -528,6 +545,7 @@ public partial class App : Application
         var tb = new TextBox()
         {
             Text = message,
+            MinWidth = minWidth,
             FontSize = fontSize,
             FontFamily = fontFamily,
             TextWrapping = TextWrapping.Wrap
@@ -539,6 +557,9 @@ public partial class App : Application
         ContentDialog contentDialog = new ContentDialog()
         {
             Title = title,
+            MinWidth = minWidth + brdrThickness,
+            BorderBrush = brdrBrush,
+            BorderThickness = new Thickness(brdrThickness),
             PrimaryButtonText = primaryText,
             CloseButtonText = cancelText,
             Content = panel,

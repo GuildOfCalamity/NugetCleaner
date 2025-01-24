@@ -9,14 +9,19 @@
     xmlns:root="using:NugetCleaner"
     BorderBrush="{StaticResource GradientBarBrush}"
     BorderThickness="1"
-    CloseButtonStyle="{ThemeResource DefaultContentDialogStyle}"
     CloseButtonText=""
     CornerRadius="5"
     DefaultButton="Primary"
-    PrimaryButtonStyle="{ThemeResource AccentButtonStyle}"
     PrimaryButtonText="OK"
     SecondaryButtonText=""
     mc:Ignorable="d">
+    <!--
+        NOTE: Absolutely DO NOT set the button styles in the ContentDialog header above.
+        e.g. PrimaryButtonStyle="{ThemeResource AccentButtonStyle}", this will cause
+        unhandled exceptions that will lead you to believe the issue is the XamlRoot.
+        I have added a note about this under the Microsoft-UI-XAML Issues:
+        https://github.com/microsoft/microsoft-ui-xaml/issues/2504#issuecomment-2612751024
+    -->
     <ContentDialog.Title>
         <Grid MinWidth="500" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
