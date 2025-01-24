@@ -105,12 +105,41 @@
             Margin="20,10,20,5"
             Orientation="Horizontal"
             Spacing="4">
+            <Image
+                Width="30"
+                Height="30"
+                Margin="0,0,8,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Opacity="0.8"
+                Source="ms-appx:///Assets/Spinner.png"
+                Visibility="Visible">
+                <Image.Resources>
+                    <Storyboard
+                        x:Name="StoryboardSpin"
+                        AutoReverse="False"
+                        RepeatBehavior="Forever">
+                        <DoubleAnimation
+                            x:Name="dblAnimation"
+                            Storyboard.TargetName="spinnerTransform"
+                            Storyboard.TargetProperty="Angle"
+                            From="0"
+                            To="360"
+                            Duration="0:00:01.2" />
+                    </Storyboard>
+                </Image.Resources>
+                <Image.RenderTransform>
+                    <RotateTransform x:Name="spinnerTransform" CenterX="15" CenterY="15" />
+                </Image.RenderTransform>
+            </Image>
             <TextBlock
+                VerticalAlignment="Center"
                 FontSize="{StaticResource FontSizeMedium}"
                 Foreground="{StaticResource SecondaryBrush}"
                 Text="Application version"
                 TextWrapping="NoWrap" />
             <TextBlock
+                VerticalAlignment="Center"
                 FontSize="{StaticResource FontSizeMedium}"
                 Foreground="{StaticResource SecondaryBrush}"
                 Text="{x:Bind root:App.GetCurrentAssemblyVersion()}"
