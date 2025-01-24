@@ -57,11 +57,19 @@
                     Foreground="{StaticResource SecondaryBrush}"
                     Shadow="{ThemeResource CommandBarFlyoutOverflowShadow}"
                     Text="About&#x0020;" />
-                <TextBlock
-                    FontSize="{StaticResource FontSizeHuge}"
-                    Foreground="{StaticResource SecondaryBrush}"
-                    Shadow="{ThemeResource CommandBarFlyoutOverflowShadow}"
-                    Text="{x:Bind root:App.GetFormattedNamespace()}" />
+                <root:CompositionShadow
+                    Grid.Row="1"
+                    BlurRadius="16"
+                    OffsetX="0"
+                    OffsetY="0"
+                    ShadowOpacity="0.82"
+                    Color="#C4DFFF">
+                    <TextBlock
+                        FontSize="{StaticResource FontSizeHuge}"
+                        Foreground="{StaticResource SecondaryBrush}"
+                        Shadow="{ThemeResource CommandBarFlyoutOverflowShadow}"
+                        Text="{x:Bind root:App.GetFormattedNamespace()}" />
+                </root:CompositionShadow>
             </StackPanel>
             <Image
                 Grid.Column="1"
