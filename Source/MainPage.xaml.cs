@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
+using System.Reflection.PortableExecutable;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,6 +16,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
 using NugetCleaner.Support;
+using Windows.Media.Protection.PlayReady;
 
 namespace NugetCleaner;
 
@@ -75,6 +80,8 @@ public sealed partial class MainPage : Page
     {
         if (App.IsClosing)
             return;
+
+        //DispatcherQueue.InvokeOnUI(() => { tbMessages.Text = msg; });
 
         _ = tbMessages.DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, () =>
         {
@@ -295,6 +302,109 @@ public sealed partial class MainPage : Page
         #endregion
     }
 
+    /// <summary>
+    /// I'm leaving this in as a template in the event you add additional control events for the user.
+    /// </summary>
+    void SampleClickEventLogic()
+    {
+        bool AppWideBusyFlag = false;
+        _cts = new CancellationTokenSource();
+
+
+        #region [*************** Technique #1 ***************]
+
+        // Capture the UI context before forking.
+        var syncContext = System.Threading.Tasks.TaskScheduler.FromCurrentSynchronizationContext();
+
+        var scanTask = Task.Run(async () =>
+        {
+            AppWideBusyFlag = true;
+
+            await Task.Delay(5000);
+
+        }, _cts.Token);
+
+        /** 
+         **   You wouldn't use both of these ContinueWith examples below, just select the one you're comfortable with.
+         **   One demonstrates with synchronization context, and one demonstrates without synchronization context.
+         **/
+        #region [With Synchronization Context]
+        // We're guaranteed the UI context when we come back, so any
+        // FrameworkElement/UIElement/DependencyObject update can
+        // be done directly via the control's properties.
+        scanTask.ContinueWith(tsk =>
+        {
+            AppWideBusyFlag = false;
+
+            if (tsk.IsCanceled)
+                tbMessages.Text = "Scan canceled.";
+            else if (tsk.IsFaulted)
+                tbMessages.Text = $"Error: {tsk.Exception?.GetBaseException().Message}";
+            else
+                tbMessages.Text = "Scan complete!";
+        }, syncContext);
+        #endregion
+
+        #region [Without Synchronization Context]
+        // We're not guaranteed the UI context when we come back, so any
+        // FrameworkElement/UIElement/DependencyObject update should be
+        // done via the main DispatcherQueue or the control's Dispatcher.
+        scanTask.ContinueWith(tsk =>
+        {
+            AppWideBusyFlag = false;
+
+            if (tsk.IsCanceled)
+                DispatcherQueue.InvokeOnUI(() => tbMessages.Text = "Scan canceled.");
+            else if (tsk.IsFaulted)
+                DispatcherQueue.InvokeOnUI(() => tbMessages.Text = $"Error: {tsk.Exception?.GetBaseException().Message}");
+            else
+                DispatcherQueue.InvokeOnUI(() => tbMessages.Text = "Scan complete!");
+        }, syncContext);
+        #endregion
+
+        #endregion [*************** Technique #1 ***************]
+
+
+        #region [*************** Technique #2 ***************]
+
+        var dummyTask = SampleAsyncMethod(_cts.Token);
+
+        /** Happens when successful **/
+        dummyTask.ContinueWith(task =>
+        {
+            var list = task.Result; // Never access Task.Result unless the Task was successful.
+            foreach (var thing in list) { LogMessages.Add(thing); }
+        }, CancellationToken.None, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.FromCurrentSynchronizationContext());
+
+        /** Happens when faulted **/
+        dummyTask.ContinueWith(task =>
+        {
+            foreach (var ex in task.Exception!.Flatten().InnerExceptions) { tbMessages.Text = ex.Message; }
+        }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.FromCurrentSynchronizationContext());
+
+        /** Happens when canceled **/
+        dummyTask.ContinueWith(task =>
+        {
+            tbMessages.Text = "Dummy Task Canceled!";
+        }, CancellationToken.None, TaskContinuationOptions.OnlyOnCanceled, TaskScheduler.FromCurrentSynchronizationContext());
+
+        /** Always happens **/
+        dummyTask.ContinueWith(task =>
+        {
+            AppWideBusyFlag = false;
+        }, TaskScheduler.FromCurrentSynchronizationContext());
+
+        // Just a place-holder.
+        async Task<List<TargetItem>> SampleAsyncMethod(CancellationToken cancelToken = new CancellationToken())
+        {
+            await Task.Delay(3000, cancelToken);
+            cancelToken.ThrowIfCancellationRequested();
+            return new List<TargetItem>();
+        }
+        #endregion [*************** Technique #2 ***************]
+
+    }
+
     void SliderDaysChanged(object sender, Microsoft.UI.Xaml.Controls.Primitives.RangeBaseValueChangedEventArgs e)
     {
         if (_loaded)
@@ -329,8 +439,8 @@ public sealed partial class MainPage : Page
 
     void ScanEngineOnScanComplete(long size)
     {
-        App.Profile!.LastSize = size;
-        App.Profile!.LastCount = LogMessages.Count;
+        if (size != 0) { App.Profile!.LastSize = size; }
+        if (LogMessages.Count != 0) { App.Profile!.LastCount = LogMessages.Count; }
 
         if (_reportMode)
             UpdateMessage($"Reclaimed size if deleted: {size.HumanReadableSize()}", MessageLevel.Important);
