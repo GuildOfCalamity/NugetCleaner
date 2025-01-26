@@ -3,9 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
-using System.Net.Http;
-using System.Reflection.PortableExecutable;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,7 +13,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 
 using NugetCleaner.Support;
-using Windows.Media.Protection.PlayReady;
 
 namespace NugetCleaner;
 

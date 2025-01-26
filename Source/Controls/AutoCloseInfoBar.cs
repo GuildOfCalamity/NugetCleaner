@@ -11,9 +11,11 @@ namespace NugetCleaner;
 /// </summary>
 public class AutoCloseInfoBar : InfoBar
 {
+    bool _useFadeOutMode = true;
     long? _iopToken;
     long? _mpToken;
     DispatcherTimer? _timer;
+    DispatcherTimer? _timerFade;
 
     /// <summary>
     /// Gets or sets the auto-close interval, in milliseconds.
@@ -61,9 +63,31 @@ public class AutoCloseInfoBar : InfoBar
     /// <summary>
     /// Triggered once the <see cref="AutoCloseInterval"/> elapses.
     /// </summary>
-    void Timer_Tick(object? sender, object e)
+    void TimerOnTick(object? sender, object e)
     {
-        this.IsOpen = false;
+        if (_useFadeOutMode)
+        {
+            AnimateUIElementOpacity(1, 0, TimeSpan.FromSeconds(AnimationSeconds/2d), this);
+            if (_timerFade != null)
+            {
+                _timerFade.Stop();
+                _timerFade.Tick -= TimerFadeOnTick;
+            }
+            _timerFade = new DispatcherTimer();
+            _timerFade.Tick += TimerFadeOnTick;
+            _timerFade.Interval = TimeSpan.FromSeconds(AnimationSeconds/2d);
+            _timerFade.Start();
+            void TimerFadeOnTick(object? sender, object e)
+            {
+                this.IsOpen = false;
+                _timerFade.Stop();
+                _timerFade.Tick -= TimerFadeOnTick;
+            }
+        }
+        else // original behavior
+        {
+            this.IsOpen = false;
+        }
     }
 
     /// <summary>
@@ -129,7 +153,7 @@ public class AutoCloseInfoBar : InfoBar
     void Open()
     {
         _timer = new DispatcherTimer();
-        _timer.Tick += Timer_Tick;
+        _timer.Tick += TimerOnTick;
         _timer.Interval = TimeSpan.FromMilliseconds(AutoCloseInterval);
         _timer.Start();
     }
@@ -140,7 +164,7 @@ public class AutoCloseInfoBar : InfoBar
             return;
 
         _timer.Stop();
-        _timer.Tick -= Timer_Tick;
+        _timer.Tick -= TimerOnTick;
     }
     #endregion
 

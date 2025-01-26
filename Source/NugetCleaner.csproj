@@ -64,6 +64,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Remove="Assets\Fonts\Hack.ttf" />
+    <Content Remove="Assets\Screenshot.png" />
+    <Content Remove="Assets\Screenshot2.png" />
+    <Content Remove="Assets\Screenshot3.png" />
+    <Content Remove="Assets\Screenshot4.png" />
+    <Content Remove="Assets\Screenshot5.png" />
   </ItemGroup>
   <ItemGroup>
     <None Remove="AnimatedCirclesControl.xaml" />
@@ -111,15 +116,15 @@
     <Content Update="Assets\NoticeIcon.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Update="Assets\Screenshot.png">
+    <Content Update="Assets\Spinner2.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Update="Assets\Screenshot2.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Update="Assets\Spinner.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <None Update="Assets\Screenshot.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
+    <None Update="Assets\Screenshot2.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
     <Content Update="Assets\SplashScreen.scale-200.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -133,6 +138,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="Assets\StoreLogo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="Assets\Spinner.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Update="Assets\WarningIcon.png">

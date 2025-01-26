@@ -1,8 +1,6 @@
 using System;
 using System.Numerics;
 
-using Windows.UI;
-
 using Microsoft.UI;
 using Microsoft.UI.Composition;
 using Microsoft.UI.Xaml;
@@ -11,6 +9,8 @@ using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Markup;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Shapes;
+
+using Windows.UI;
 
 namespace NugetCleaner;
 
@@ -32,10 +32,11 @@ namespace NugetCleaner;
 [ContentProperty(Name = nameof(CastingElement))]
 public sealed partial class CompositionShadow : UserControl
 {
-    FrameworkElement _castingElement;
+    FrameworkElement? _castingElement;
     readonly DropShadow _dropShadow;
     readonly SpriteVisual _shadowVisual;
 
+    #region [Dependency Properties]
     public static readonly DependencyProperty BlurRadiusProperty = DependencyProperty.Register(
             nameof(BlurRadius),
             typeof(double),
@@ -81,16 +82,14 @@ public sealed partial class CompositionShadow : UserControl
             typeof(double),
             typeof(CompositionShadow),
             new PropertyMetadata(1.0, OnShadowOpacityChanged));
+    #endregion
 
     public CompositionShadow()
     {
         this.InitializeComponent();
         DefaultStyleKey = typeof(CompositionShadow);
         SizeChanged += CompositionShadow_SizeChanged;
-        Loaded += (object sender, RoutedEventArgs e) =>
-        {
-            ConfigureShadowVisualForCastingElement();
-        };
+        Loaded += (object sender, RoutedEventArgs e) => { ConfigureShadowVisualForCastingElement(); };
 
         Compositor compositor = ElementCompositionPreview.GetElementVisual(this).Compositor;
         _shadowVisual = compositor.CreateSpriteVisual();
@@ -99,8 +98,29 @@ public sealed partial class CompositionShadow : UserControl
 
         // SetElementChildVisual on the control itself ("this") would result in the shadow
         // rendering on top of the content. To avoid this, CompositionShadow contains a Border
-        // (to host the shadow) and a ContentPresenter (to hose the actual content, "CastingElement").
+        // (to host the shadow) and a ContentPresenter (to host the actual content, "CastingElement").
         ElementCompositionPreview.SetElementChildVisual(ShadowElement, _shadowVisual);
+    }
+
+    /// <summary>
+    /// The FrameworkElement that this <see cref="CompositionShadow"/> uses to create 
+    /// the mask for the underlying <see cref="Windows.UI.Composition.DropShadow"/>.
+    /// </summary>
+    public FrameworkElement? CastingElement
+    {
+        get => _castingElement;
+        set
+        {
+            if (_castingElement != null)
+                _castingElement.SizeChanged -= CompositionShadow_SizeChanged;
+
+            _castingElement = value;
+
+            if (_castingElement != null)
+                _castingElement.SizeChanged += CompositionShadow_SizeChanged;
+
+            ConfigureShadowVisualForCastingElement();
+        }
     }
 
     /// <summary>
@@ -110,25 +130,6 @@ public sealed partial class CompositionShadow : UserControl
     {
         get { return (double)GetValue(BlurRadiusProperty); }
         set { SetValue(BlurRadiusProperty, value); }
-    }
-
-    /// <summary>
-    /// The FrameworkElement that this <see cref="CompositionShadow"/> uses to create 
-    /// the mask for the underlying <see cref="Windows.UI.Composition.DropShadow"/>.
-    /// </summary>
-    public FrameworkElement CastingElement
-    {
-        get { return _castingElement; }
-        set
-        {
-            if (_castingElement != null)
-                _castingElement.SizeChanged -= CompositionShadow_SizeChanged;
-
-            _castingElement = value;
-            _castingElement.SizeChanged += CompositionShadow_SizeChanged;
-
-            ConfigureShadowVisualForCastingElement();
-        }
     }
 
     /// <summary>
@@ -211,45 +212,35 @@ public sealed partial class CompositionShadow : UserControl
         set { SetValue(ShadowOpacityProperty, value); }
     }
 
-    static void OnBlurRadiusChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((CompositionShadow)d).OnBlurRadiusChanged((double)e.NewValue);
-    }
+    static void OnBlurRadiusChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((CompositionShadow)d).OnBlurRadiusChanged((double)e.NewValue);
 
-    static void OnColorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((CompositionShadow)d).OnColorChanged((Color)e.NewValue);
-    }
+    static void OnColorChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((CompositionShadow)d).OnColorChanged((Color)e.NewValue);
 
-    static void OnBrushChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((CompositionShadow)d).OnBrushChanged((SolidColorBrush)e.NewValue);
-    }
+    static void OnBrushChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((CompositionShadow)d).OnBrushChanged((SolidColorBrush)e.NewValue);
 
-    static void OnOffsetXChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((CompositionShadow)d).OnOffsetXChanged((double)e.NewValue);
-    }
+    static void OnOffsetXChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((CompositionShadow)d).OnOffsetXChanged((double)e.NewValue);
 
-    static void OnOffsetYChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((CompositionShadow)d).OnOffsetYChanged((double)e.NewValue);
-    }
+    static void OnOffsetYChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((CompositionShadow)d).OnOffsetYChanged((double)e.NewValue);
 
-    static void OnOffsetZChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((CompositionShadow)d).OnOffsetZChanged((double)e.NewValue);
-    }
+    static void OnOffsetZChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((CompositionShadow)d).OnOffsetZChanged((double)e.NewValue);
 
-    static void OnShadowOpacityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
-    {
-        ((CompositionShadow)d).OnShadowOpacityChanged((double)e.NewValue);
-    }
+    static void OnShadowOpacityChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) => ((CompositionShadow)d).OnShadowOpacityChanged((double)e.NewValue);
 
-    void CompositionShadow_SizeChanged(object sender, SizeChangedEventArgs e)
-    {
-        UpdateShadowSize();
-    }
+    void CompositionShadow_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateShadowSize();
+
+    void OnBlurRadiusChanged(double newValue) => _dropShadow.BlurRadius = (float)newValue;
+
+    void OnColorChanged(Color newValue) => _dropShadow.Color = newValue;
+
+    void OnBrushChanged(SolidColorBrush newValue) => _dropShadow.Color = newValue.Color;
+
+    void OnOffsetXChanged(double newValue) => UpdateShadowOffset((float)newValue, _dropShadow.Offset.Y, _dropShadow.Offset.Z);
+
+    private void OnOffsetYChanged(double newValue) => UpdateShadowOffset(_dropShadow.Offset.X, (float)newValue, _dropShadow.Offset.Z);
+
+    void OnOffsetZChanged(double newValue) => UpdateShadowOffset(_dropShadow.Offset.X, _dropShadow.Offset.Y, (float)newValue);
+
+    void OnShadowOpacityChanged(double newValue) => _dropShadow.Opacity = (float)newValue;
 
     void ConfigureShadowVisualForCastingElement()
     {
@@ -257,46 +248,11 @@ public sealed partial class CompositionShadow : UserControl
         UpdateShadowSize();
     }
 
-    void OnBlurRadiusChanged(double newValue)
-    {
-        _dropShadow.BlurRadius = (float)newValue;
-    }
-
-    void OnColorChanged(Color newValue)
-    {
-        _dropShadow.Color = newValue;
-    }
-
-    void OnBrushChanged(SolidColorBrush newValue)
-    {
-        _dropShadow.Color = newValue.Color;
-    }
-
-    void OnOffsetXChanged(double newValue)
-    {
-        UpdateShadowOffset((float)newValue, _dropShadow.Offset.Y, _dropShadow.Offset.Z);
-    }
-
-    private void OnOffsetYChanged(double newValue)
-    {
-        UpdateShadowOffset(_dropShadow.Offset.X, (float)newValue, _dropShadow.Offset.Z);
-    }
-
-    void OnOffsetZChanged(double newValue)
-    {
-        UpdateShadowOffset(_dropShadow.Offset.X, _dropShadow.Offset.Y, (float)newValue);
-    }
-
-    void OnShadowOpacityChanged(double newValue)
-    {
-        _dropShadow.Opacity = (float)newValue;
-    }
-
     void UpdateShadowMask()
     {
         if (_castingElement != null)
         {
-            CompositionBrush mask = null;
+            CompositionBrush? mask = null; // The CompositionBrush is the base class for brushes used to paint a SpriteVisual.
             if (_castingElement is Image)
             {
                 mask = ((Image)_castingElement).GetAlphaMask();
@@ -310,6 +266,8 @@ public sealed partial class CompositionShadow : UserControl
                 mask = ((TextBlock)_castingElement).GetAlphaMask();
             }
 
+            // TODO: Add support for other types of elements?
+
             _dropShadow.Mask = mask;
         }
         else
@@ -319,10 +277,7 @@ public sealed partial class CompositionShadow : UserControl
         }
     }
 
-    void UpdateShadowOffset(float x, float y, float z)
-    {
-        _dropShadow.Offset = new Vector3(x, y, z);
-    }
+    void UpdateShadowOffset(float x, float y, float z) => _dropShadow.Offset = new Vector3(x, y, z);
 
     void UpdateShadowSize()
     {

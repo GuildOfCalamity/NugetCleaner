@@ -691,6 +691,7 @@ public partial class App : Application
     #endregion
 
     #region [User32 Imports]
+#pragma warning disable CS0414
     static int SW_HIDE = 0;
     static int SW_SHOWNORMAL = 1;
     static int SW_SHOWMINIMIZED = 2;
@@ -703,6 +704,7 @@ public partial class App : Application
     static int SW_RESTORE = 9;
     static int SW_SHOWDEFAULT = 10;
     static int SW_FORCEMINIMIZE = 11;
+#pragma warning restore CS0414
     [DllImport("User32.dll")]
     internal static extern bool ShowWindow(IntPtr handle, int nCmdShow);
 

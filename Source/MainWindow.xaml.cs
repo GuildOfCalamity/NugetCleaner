@@ -40,6 +40,7 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             }
         }
     }
+
     public MainWindow()
     {
         Debug.WriteLine($"[INFO] {System.Reflection.MethodBase.GetCurrentMethod()?.DeclaringType?.Name}__{System.Reflection.MethodBase.GetCurrentMethod()?.Name} [{DateTime.Now.ToString("hh:mm:ss.fff tt")}]");
@@ -50,6 +51,8 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
         if (Microsoft.UI.Windowing.AppWindowTitleBar.IsCustomizationSupported())
         {
             this.ExtendsContentIntoTitleBar = true;
+            //this.AppWindow.DefaultTitleBarShouldMatchAppModeTheme = true; // Should be supported once SDK 1.7 is released?
+            this.AppWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Standard;
             this.Title = $"{App.GetCurrentAssemblyName()}";
             SetTitleBar(CustomTitleBar);
         }
@@ -363,10 +366,6 @@ public sealed partial class MainWindow : Window, INotifyPropertyChanged
             App.Current.Resources.TryGetValue("GC3", out object clr3) &&
             App.Current.Resources.TryGetValue("GC4", out object clr4))
         {
-            //var clr1 = (Windows.UI.Color)App.Current.Resources["GC1"];
-            //var clr2 = (Windows.UI.Color)App.Current.Resources["GC2"];
-            //var clr3 = (Windows.UI.Color)App.Current.Resources["GC3"];
-            //var clr4 = (Windows.UI.Color)App.Current.Resources["GC4"];
             gradientStops.Insert(0, compositor.CreateColorGradientStop(0.0f, (Windows.UI.Color)clr1));
             gradientStops.Insert(1, compositor.CreateColorGradientStop(0.3f, (Windows.UI.Color)clr2));
             gradientStops.Insert(2, compositor.CreateColorGradientStop(0.6f, (Windows.UI.Color)clr3));

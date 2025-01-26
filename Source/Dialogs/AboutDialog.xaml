@@ -116,10 +116,10 @@
             <Image
                 Width="30"
                 Height="30"
-                Margin="0,0,8,0"
+                Margin="0,1,8,0"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
-                Opacity="0.8"
+                Opacity="0.9"
                 Source="ms-appx:///Assets/Spinner.png"
                 Visibility="Visible">
                 <Image.Resources>
@@ -133,7 +133,13 @@
                             Storyboard.TargetProperty="Angle"
                             From="0"
                             To="360"
-                            Duration="0:00:01.2" />
+                            Duration="0:00:01.25">
+                            <!--
+                            <DoubleAnimation.EasingFunction>
+                                <SineEase EasingMode="EaseInOut" />
+                            </DoubleAnimation.EasingFunction>
+                            -->
+                        </DoubleAnimation>
                     </Storyboard>
                 </Image.Resources>
                 <Image.RenderTransform>
