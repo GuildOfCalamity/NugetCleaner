@@ -39,6 +39,7 @@ public partial class SlideBar : InfoBar
     {
         _mpToken = this.RegisterPropertyChangedCallback(MessageProperty, MessageChanged);
         _tmrClose.Interval = AutoCloseInterval;
+        _tmrClose.Enabled = true;
         _tmrClose.Elapsed += OnTick;
     }
 
@@ -142,7 +143,7 @@ public partial class SlideBar : InfoBar
 
     void OnTick(object? sender, ElapsedEventArgs e)
     {
-        _tmrClose.Enabled = false;
+        _tmrClose.Stop();
         // When using System.Timers.Timer we're probably not on a UI thread when this
         // event fires so we'll need to set the DependencyProperty via the Dispatcher.
         this.DispatcherQueue.TryEnqueue(() => IsOpen = false);
@@ -154,8 +155,8 @@ public partial class SlideBar : InfoBar
         StopCurrentAnimation();
 
         // Stop the close timer (if running)
-        if (_tmrClose != null && _tmrClose.Enabled)
-            _tmrClose.Enabled = false;
+        if (_tmrClose != null)
+            _tmrClose.Stop();
 
         // Reset opacity and visibility for fade-in animation
         this.Opacity = 0;
@@ -196,7 +197,7 @@ public partial class SlideBar : InfoBar
         if (_tmrClose != null)
         {
             Debug.WriteLine($"[INFO] Starting close timer.");
-            _tmrClose.Enabled = true;
+            _tmrClose.Start();
         }
     }
 
@@ -266,6 +267,7 @@ public partial class SlideBar : InfoBar
 
     /// <summary>
     /// Callback for our control's property change.
+    /// TODO: Rework this to activate the InfoBar, if it's not already open, once the user changes the Message.
     /// </summary>
     void MessageChanged(DependencyObject o, DependencyProperty p)
     {
