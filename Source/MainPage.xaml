@@ -308,10 +308,19 @@
             Margin="0"
             VerticalAlignment="Bottom">
             <!--  Wrap this in a StackPanel/Grid to support AnimateUIElementOffset  -->
-            <local:AutoCloseInfoBar
+            <!--<local:AutoCloseInfoBar
                 x:Name="infoBar"
                 AnimationSeconds="2.0"
                 AutoCloseInterval="6000"
+                Background="{StaticResource GradientBarBrush}"
+                FontFamily="{StaticResource PrimaryFont}"
+                Foreground="{StaticResource PrimaryBrush}"
+                Severity="Informational"
+                SlideUp="True" />-->
+            <!--  This is my "new & improved" version of the original AutoCloseInfoBar.  -->
+            <local:SlideBar
+                x:Name="infoBar"
+                AutoCloseInterval="7000"
                 Background="{StaticResource GradientBarBrush}"
                 FontFamily="{StaticResource PrimaryFont}"
                 Foreground="{StaticResource PrimaryBrush}"
