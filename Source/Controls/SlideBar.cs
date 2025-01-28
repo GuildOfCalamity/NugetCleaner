@@ -23,6 +23,9 @@ public partial class SlideBar : InfoBar
     //DispatcherTimer? _closeTimer;
     static System.Timers.Timer _tmrClose = new System.Timers.Timer();
 
+    /// <summary>
+    /// TODO: Add logic to reset timer if message is updated whilst timer is already active.
+    /// </summary>
     public SlideBar() // : base()
     {
         //DefaultStyleKey = typeof(InfoBar);
@@ -47,7 +50,7 @@ public partial class SlideBar : InfoBar
     {
         if (_mpToken != null)
             this.UnregisterPropertyChangedCallback(MessageProperty, (long)_mpToken);
-            
+
         if (_tmrClose != null)
         {
             Debug.WriteLine($"[INFO] Disposing timer.");
@@ -143,7 +146,7 @@ public partial class SlideBar : InfoBar
 
     void OnTick(object? sender, ElapsedEventArgs e)
     {
-        _tmrClose.Stop();
+        _tmrClose?.Stop();
         // When using System.Timers.Timer we're probably not on a UI thread when this
         // event fires so we'll need to set the DependencyProperty via the Dispatcher.
         this.DispatcherQueue.TryEnqueue(() => IsOpen = false);
@@ -154,9 +157,8 @@ public partial class SlideBar : InfoBar
         // Stop any current animation
         StopCurrentAnimation();
 
-        // Stop the close timer (if running)
-        if (_tmrClose != null)
-            _tmrClose.Stop();
+        // Stop the close timer
+        _tmrClose?.Stop();
 
         // Reset opacity and visibility for fade-in animation
         this.Opacity = 0;
@@ -194,11 +196,8 @@ public partial class SlideBar : InfoBar
         storyboard.Begin();
 
         // Start the auto-close timer
-        if (_tmrClose != null)
-        {
-            Debug.WriteLine($"[INFO] Starting close timer.");
-            _tmrClose.Start();
-        }
+        Debug.WriteLine($"[INFO] Starting close timer.");
+        _tmrClose?.Start();
     }
 
     void CloseInfoBar()
@@ -210,14 +209,14 @@ public partial class SlideBar : InfoBar
         {
             From = SlideUp ? 0 : SlideAmount, // Start offset
             To = SlideUp ? SlideAmount : 0,   // End offset
-            Duration = new Duration(Alteration(FadeDuration, 0.75)),
+            Duration = new Duration(Alter(FadeDuration, 0.75)), // Shorten the time during close
             EasingFunction = new QuadraticEase()
         };
 
         var fadeOutAnimation = new DoubleAnimation
         {
             From = 1, To = 0,
-            Duration = new Duration(Alteration(FadeDuration, 0.75)),
+            Duration = new Duration(Alter(FadeDuration, 0.75)), // Shorten the time during close
             EasingFunction = new QuadraticEase()
         };
 
@@ -237,7 +236,7 @@ public partial class SlideBar : InfoBar
         // Hide InfoBar after animation is completed.
         storyboard.Completed += (s, e) =>
         {
-            Debug.WriteLine($"[INFO] Storyboard.Completed event");
+            Debug.WriteLine($"[INFO] Storyboard completed event");
             this.Visibility = Visibility.Collapsed;
             base.IsOpen = false;
         };
@@ -278,11 +277,13 @@ public partial class SlideBar : InfoBar
         if (p != MessageProperty)
             return;
 
+        // If message was changed, reset the timer.
         if (obj.IsOpen)
         {
-            // If message was changed, reset the timer.
+            // If we're already open we know the timer is running.
             if (_tmrClose != null)
             {
+                Debug.WriteLine($"[INFO] Resetting close timer.");
                 _tmrClose.Stop();
                 _tmrClose.Interval = AutoCloseInterval;
                 _tmrClose.Start();
@@ -294,5 +295,5 @@ public partial class SlideBar : InfoBar
         }
     }
 
-    internal TimeSpan Alteration(TimeSpan timeSpan, double scalar) => new TimeSpan((long)(timeSpan.Ticks * scalar));
+    internal TimeSpan Alter(TimeSpan timeSpan, double scalar) => new TimeSpan((long)(timeSpan.Ticks * scalar));
 }
