@@ -7,9 +7,11 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.UI;
+using Microsoft.UI.Composition;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Hosting;
 using Microsoft.UI.Xaml.Media;
 
 using NugetCleaner.Support;
@@ -27,6 +29,8 @@ public sealed partial class MainPage : Page
     static Brush? _lvl3;
     static Brush? _lvl4;
     static Brush? _lvl5;
+    static Compositor? _compositor;
+    static float ctrlOffsetX = 0; // Store the grid's initial offset for later animation.
     static CancellationTokenSource _cts = new();
     public string? PackagePath { get; set; }
     public ObservableCollection<TargetItem> LogMessages { get; set; } = new();
@@ -36,6 +40,7 @@ public sealed partial class MainPage : Page
     {
         this.InitializeComponent();
         this.Loaded += MainPageOnLoaded;
+        btnRun.Loaded += ButtonRunOnLoaded;
         btnRun.PointerEntered += ButtonRunOnPointerEntered;
         btnRun.PointerExited += ButtonRunOnPointerExited;
         ScanEngine.OnTargetAdded += ScanEngineOnTargetAdded;
@@ -213,6 +218,7 @@ public sealed partial class MainPage : Page
                     {
                         Debug.WriteLine("[INFO] User agrees to proceed.");
                         LogMessages.Clear();
+                        UpdateMessage("Cleaning…");
                     }
                     else if (result is ContentDialogResult.None)
                     {
@@ -235,13 +241,13 @@ public sealed partial class MainPage : Page
             else
             {
                 LogMessages.Clear();
+                UpdateMessage("Scanning…");
             }
             btnRun.Content = "Cancel";
-            UpdateMessage("Scanning...");
         }
         else
         {
-            UpdateMessage("Canceling...");
+            UpdateMessage("Canceling…");
             _cts?.Cancel();
             btnRun.IsEnabled = _running = false;
             DispatcherQueue?.EnqueueAsync(async () =>
@@ -292,7 +298,7 @@ public sealed partial class MainPage : Page
                 else if (LogMessages.Count == 0)
                     UpdateMessage($"No matches discovered. Try adjusting the days slider and try again.", MessageLevel.Important);
                 else if (LogMessages.Count > 1)
-                    ToastHelper.ShowStandardToast("Results", $"There are {LogMessages.Count.ToString("#,###,##0")} stale NuGet packages than can be removed.");
+                    ToastHelper.ShowStandardToast("Results", $"There are {LogMessages.Count.ToString("#,###,##0")} stale NuGet packages {(_reportMode ? "than can be" : "that were")} removed.");
             });
         });
         #endregion
@@ -410,9 +416,27 @@ public sealed partial class MainPage : Page
         }
     }
 
-    void ButtonRunOnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) => this.ProtectedCursor = null;
+    void ButtonRunOnLoaded(object sender, RoutedEventArgs e)
+    {
+        // It seems when the button's offset is modified from Grid/Stack centering,
+        // we must force an animation to run to setup the initial starting conditions.
+        // If you skip this step then you'll have to mouse-over the grid twice to
+        // see the intended animation (for first run only).
+        ctrlOffsetX = ((Button)sender).ActualOffset.X;
+        AnimateButtonX((Button)sender, ctrlOffsetX);
+    }
 
-    void ButtonRunOnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e) => this.ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Hand);
+    void ButtonRunOnPointerExited(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        this.ProtectedCursor = null;
+        AnimateButtonX((Button)sender, ctrlOffsetX + 4f);
+    }
+
+    void ButtonRunOnPointerEntered(object sender, Microsoft.UI.Xaml.Input.PointerRoutedEventArgs e)
+    {
+        this.ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Hand);
+        AnimateButtonX((Button)sender, ctrlOffsetX);
+    }
 
     void ReportOnSwitchToggled(object sender, RoutedEventArgs e)
     {
@@ -447,4 +471,39 @@ public sealed partial class MainPage : Page
     void ScanEngineOnTargetAdded(TargetItem ti) => AddLogItem(ti);
 
     #endregion
+
+    /// <summary>
+    /// Ensures the button starts with Offset.X = 0
+    /// </summary>
+    public void InitializeButtonOffsetX(Button button)
+    {
+        if (button is null) { return; }
+        Visual buttonVisual = ElementCompositionPreview.GetElementVisual(button);
+        buttonVisual.Offset = new System.Numerics.Vector3(0, buttonVisual.Offset.Y, buttonVisual.Offset.Z);
+    }
+
+    /// <summary>
+    /// Applies a <see cref="SpringScalarNaturalMotionAnimation"/> to <paramref name="button"/> based on the <paramref name="offset"/>.
+    /// </summary>
+    public void AnimateButtonX(Button button, float offset)
+    {
+        if (button is null)
+            return;
+
+        if (_compositor is null)
+            _compositor = ElementCompositionPreview.GetElementVisual(this).Compositor;
+
+        // Create spring animation
+        SpringScalarNaturalMotionAnimation _springAnimation = _compositor.CreateSpringScalarAnimation();
+        _springAnimation.StopBehavior = AnimationStopBehavior.SetToFinalValue;
+        _springAnimation.Target = "Offset.X";   // Move horizontally
+        _springAnimation.InitialVelocity = 50f; // Movement speed
+        _springAnimation.FinalValue = offset;   // Set the final target X position
+        _springAnimation.DampingRatio = 0.3f;   // Lower values are more "springy"
+        _springAnimation.Period = TimeSpan.FromMilliseconds(50);
+
+        // Get the button's visual and apply the animation
+        Visual buttonVisual = ElementCompositionPreview.GetElementVisual(button);
+        buttonVisual.StartAnimation("Offset.X", _springAnimation);
+    }
 }
