@@ -24,6 +24,7 @@ public sealed partial class MainPage : Page
     static bool _loaded = false;
     static bool _running = false;
     static bool _reportMode = true;
+    static bool _scanCache = false;
     static Brush? _lvl1;
     static Brush? _lvl2;
     static Brush? _lvl3;
@@ -33,6 +34,7 @@ public sealed partial class MainPage : Page
     static float ctrlOffsetX = 0; // Store the grid's initial offset for later animation.
     static CancellationTokenSource _cts = new();
     public string? PackagePath { get; set; }
+    public string? V3CachePath { get; set; }
     public ObservableCollection<TargetItem> LogMessages { get; set; } = new();
     #endregion
 
@@ -44,7 +46,8 @@ public sealed partial class MainPage : Page
         btnRun.PointerEntered += ButtonRunOnPointerEntered;
         btnRun.PointerExited += ButtonRunOnPointerExited;
         ScanEngine.OnTargetAdded += ScanEngineOnTargetAdded;
-        ScanEngine.OnScanComplete += ScanEngineOnScanComplete;
+        ScanEngine.OnPackageScanComplete += ScanEngineOnPackageScanComplete;
+        ScanEngine.OnCacheScanComplete += ScanEngineOnCacheScanComplete;
         ScanEngine.OnScanError += ScanEngineOnScanError;
 
         #region [MessageLevel Brushes]
@@ -74,6 +77,8 @@ public sealed partial class MainPage : Page
             _lvl5 = new SolidColorBrush(Colors.Red);
         #endregion
     }
+
+    
 
     #region [Helpers]
 
@@ -159,6 +164,17 @@ public sealed partial class MainPage : Page
         return text;
     }
 
+    string GetV3CacheFolder()
+    {
+        var v3 = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "AppData", "Local", "NuGet", "v3-cache");
+        if (Directory.Exists(v3))
+            return v3;
+
+        UpdateMessage("v3-cache folder was not detected on this machine.", MessageLevel.Error);
+        
+        return string.Empty;
+    }
+
     void VerifyPathIsRooted(string key, string path)
     {
         if (!Path.IsPathRooted(path))
@@ -176,6 +192,7 @@ public sealed partial class MainPage : Page
         sldrDays.Value = App.Profile!.Days;
         _loaded = true;
         PackagePath = tbNugetPath.Text = GetGlobalPackagesFolder();
+        V3CachePath = GetV3CacheFolder();
 
         #region [User Messages]
         if (App.Profile.LastSize > 0)
@@ -187,17 +204,6 @@ public sealed partial class MainPage : Page
             ContentDialogResult result = await DialogHelper.ShowAsync(new Dialogs.AboutDialog(), this.Content as FrameworkElement);
             if (result is ContentDialogResult.Primary) { Debug.WriteLine("[INFO] User clicked 'OK'."); }
             else if (result is ContentDialogResult.None) { Debug.WriteLine("[INFO] User clicked 'Cancel'."); }
-            #region [previous technique]
-            //await App.ShowContentDialog(
-            //    $"About {App.GetCurrentNamespace()?.SeparateCamelCase()}", 
-            //    $"A cleaner utility for outdated NuGet packages, which can consume a large amount of space on your local storage.{Environment.NewLine}{Environment.NewLine}The \"Report Only\" mode will scan for and display package total sizes based on the stale amount, in days.{Environment.NewLine}{Environment.NewLine}Application version {App.GetCurrentAssemblyVersion()}",
-            //    "OK",
-            //    "",
-            //    400,
-            //    null,
-            //    null,
-            //    new Uri($"ms-appx:///Assets/AppIcon.png"));
-            #endregion
         }
         #endregion
     }
@@ -208,6 +214,11 @@ public sealed partial class MainPage : Page
         if (!_running)
         {
             _cts = new CancellationTokenSource();
+
+            if (!string.IsNullOrEmpty(tbNugetPath.Text) && PackagePath != tbNugetPath.Text)
+            {
+                PackagePath = tbNugetPath.Text;
+            }
 
             if (!_reportMode)
             {
@@ -225,17 +236,6 @@ public sealed partial class MainPage : Page
                         Debug.WriteLine("[INFO] User canceled the process.");
                         _cts.Cancel();
                     }
-                    #region [previous technique]
-                    //await App.ShowContentDialog(
-                    //    $"Confirmation",
-                    //    $"This could result is deleted files, they will not be moved to the recycling bin.{Environment.NewLine}{Environment.NewLine}Are you sure?",
-                    //    "Yes",
-                    //    "No",
-                    //    300,
-                    //    delegate { Debug.WriteLine("[INFO] User agrees to proceed."); LogMessages.Clear(); },
-                    //    delegate { Debug.WriteLine("[INFO] User canceled the process."); _cts.Cancel(); },
-                    //    new Uri($"ms-appx:///Assets/AlertIcon.png"));
-                    #endregion
                 }
             }
             else
@@ -274,6 +274,16 @@ public sealed partial class MainPage : Page
                 tsReport.IsEnabled = sldrDays.IsEnabled = tbNugetPath.IsEnabled = !_running;
             });
 
+            if (_scanCache)
+            {
+                // Evaluate V3 cache
+                if (!string.IsNullOrEmpty(V3CachePath))
+                    ScanEngine.Run(V3CachePath, App.Profile!.Days, _reportMode, _cts.Token);
+                else
+                    UpdateMessage($"{nameof(V3CachePath)} cannot be empty!", MessageLevel.Error);
+            }
+
+            // Evaluate packages
             if (!string.IsNullOrEmpty(PackagePath))
                 ScanEngine.Run(PackagePath, App.Profile!.Days, _reportMode, _cts.Token);
             else
@@ -457,7 +467,7 @@ public sealed partial class MainPage : Page
 
     void ScanEngineOnScanError(Exception ex) => UpdateMessage($"{ex.Message}", MessageLevel.Warning);
 
-    void ScanEngineOnScanComplete(long size)
+    void ScanEngineOnPackageScanComplete(long size)
     {
         if (size != 0) { App.Profile!.LastSize = size; }
         if (LogMessages.Count != 0) { App.Profile!.LastCount = LogMessages.Count; }
@@ -468,9 +478,18 @@ public sealed partial class MainPage : Page
             UpdateMessage($"Total bytes reclaimed: {size.HumanReadableSize()}", MessageLevel.Important);
     }
 
+    void ScanEngineOnCacheScanComplete(long size)
+    {
+        if (_reportMode)
+            UpdateMessage($"Reclaimed cache size if deleted: {size.HumanReadableSize()}", MessageLevel.Important);
+        else
+            UpdateMessage($"Total cache bytes reclaimed: {size.HumanReadableSize()}", MessageLevel.Important);
+    }
+
     void ScanEngineOnTargetAdded(TargetItem ti) => AddLogItem(ti);
 
     #endregion
+
 
     /// <summary>
     /// Ensures the button starts with Offset.X = 0
